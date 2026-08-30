@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TraceEdge, TraceNode } from "../../lib/traceData";
 
 export interface GraphTransform {
@@ -53,17 +53,21 @@ export function GraphCanvas({
 		return { width: maxX, height: maxY };
 	}, [nodes]);
 
-	function recomputeEdges() {
+	const recomputeEdges = useCallback(() => {
 		const next: EdgePath[] = [];
+
 		for (const e of edges) {
 			const from = nodeRefs.current.get(e.from);
 			const to = nodeRefs.current.get(e.to);
+
 			if (!from || !to) continue;
+
 			const sx = from.offsetLeft + from.offsetWidth / 2;
 			const sy = from.offsetTop + from.offsetHeight;
 			const tx = to.offsetLeft + to.offsetWidth / 2;
 			const ty = to.offsetTop;
 			const midY = (sy + ty) / 2;
+
 			next.push({
 				id: e.id,
 				from: e.from,
@@ -72,24 +76,27 @@ export function GraphCanvas({
 				d: `M ${sx} ${sy} L ${sx} ${midY} L ${tx} ${midY} L ${tx} ${ty}`,
 			});
 		}
+
 		setPaths(next);
-	}
+	}, [edges]);
 
 	useEffect(() => {
 		recomputeEdges();
+
 		const raf = requestAnimationFrame(recomputeEdges);
 		let cancelled = false;
+
 		if (typeof document !== "undefined" && "fonts" in document) {
 			document.fonts.ready
 				.then(() => !cancelled && recomputeEdges())
 				.catch(() => {});
 		}
+
 		return () => {
 			cancelled = true;
 			cancelAnimationFrame(raf);
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [nodes, edges]);
+	}, [recomputeEdges]);
 
 	function set(next: Partial<GraphTransform>) {
 		onTransformChange?.({ ...transform, ...next });
@@ -152,6 +159,7 @@ export function GraphCanvas({
 					className="graph__edges"
 					width={bounds.width}
 					height={bounds.height}
+					aria-hidden="true"
 				>
 					{paths.map((p) => {
 						const active =
