@@ -1,3 +1,16 @@
+@import "@fontsource-variable/dm-sans";
+@import "@fontsource/dm-mono/300.css";
+@import "@fontsource/dm-mono/400.css";
+@import "@fontsource/dm-mono/500.css";
+
+@font-face {
+  font-family: "General Sans";
+  src: url("/fonts/GeneralSans-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+}
+
 :root {
   --bg: #0b0d0f;
   --surface: #111417;
@@ -12,9 +25,9 @@
   --accent: #d7ff4f;
   --accent-dim: rgba(215, 255, 79, 0.14);
 
-  --font-display: 'General Sans', -apple-system, 'Segoe UI', sans-serif;
-  --font-sans: 'DM Sans', -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'DM Mono', 'SF Mono', Menlo, monospace;
+  --font-display: "General Sans", sans-serif;
+  --font-sans: "DM Sans", sans-serif;
+  --font-mono: "DM Mono", monospace;
 }
 
 * { box-sizing: border-box; }
@@ -325,4 +338,34 @@ a { color: inherit; text-decoration: none; }
   .hero { grid-template-columns: 1fr; }
   .hero__meta { justify-self: start; text-align: left; }
   .inspector { grid-template-columns: 1fr; }
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+html::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-corner {
+  background: transparent;
 }
