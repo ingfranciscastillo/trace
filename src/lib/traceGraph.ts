@@ -16,6 +16,7 @@ export interface TraceNode {
 	id: string;
 	type: NodeType;
 	title: string;
+	url?: string;
 	domain?: string;
 	date?: string;
 	excerpt?: string;
@@ -153,6 +154,7 @@ export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
 		id: rootId,
 		type: "ARTICLE",
 		title: truncateTitle(article.title),
+		url: article.url,
 		domain: article.domain,
 		date: article.publishedAt ?? undefined,
 		excerpt: article.excerpt,
@@ -189,6 +191,7 @@ export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
 				id: nodeId,
 				type: r.type === "cites" ? "SOURCE" : "ARTICLE",
 				title: truncateTitle(other.title),
+				url: other.url,
 				domain: other.domain,
 				date: other.publishedAt ?? undefined,
 				excerpt: other.excerpt,
@@ -272,6 +275,7 @@ export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
 				id: sourceNodeId,
 				type: resolved ? "ARTICLE" : "SOURCE",
 				title: truncateTitle(resolved?.title ?? s.title),
+				url: resolved?.url ?? s.url,
 				domain: resolved?.domain ?? hostnameOf(s.url),
 				date: (resolved?.publishedAt ?? s.publishedAt) ?? undefined,
 				excerpt: resolved?.excerpt ?? s.description,

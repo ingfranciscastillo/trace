@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import type { TraceEdge, TraceGraph, TraceNode } from "../lib/traceGraph";
 
 interface Stat {
@@ -135,12 +136,31 @@ export function Inspector({
 
 	const stats = getStats(node, trace, trace.edges);
 	const chain = buildChain(node.id, trace.edges, trace.nodes);
+	const rootNodeId = `article-${trace.id}`;
+	const canOpenOwnTrace =
+		node.url &&
+		node.id !== rootNodeId &&
+		(node.type === "ARTICLE" || node.type === "SOURCE");
 
 	return (
 		<div className="inspector">
 			<div>
 				<div className="inspector__type">{node.type}</div>
-				<h3 className="inspector__title">{node.title}</h3>
+				<h3 className="inspector__title">
+					{node.title}
+					{node.url && (
+						<a
+							className="inspector__external-link"
+							href={node.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							title="Open original page"
+							onClick={(e) => e.stopPropagation()}
+						>
+							↗
+						</a>
+					)}
+				</h3>
 				<div className="inspector__meta">
 					{node.domain}
 					{node.date ? ` · ${node.date}` : ""}
@@ -220,6 +240,18 @@ export function Inspector({
 						>
 							{resolveSourcePending ? "FETCHING…" : "RESOLVE THIS SOURCE"}
 						</button>
+					</div>
+				)}
+
+				{canOpenOwnTrace && (
+					<div className="inspector__actions">
+						<Link
+							to="/trace"
+							search={{ url: node.url!, firecrawl: false }}
+							className="btn"
+						>
+							REVIEW THIS ARTICLE
+						</Link>
 					</div>
 				)}
 			</div>
