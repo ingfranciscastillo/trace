@@ -11,7 +11,7 @@ export function Nav() {
 			</Link>
 			<div className="nav__links">
 				<Link to="/">ANALYZE</Link>
-				<a href="#history">HISTORY</a>
+				<Link to="/history">HISTORY</Link>
 				<Link to="/about">ABOUT</Link>
 				{!isPending &&
 					(session?.user ? (

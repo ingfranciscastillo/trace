@@ -60,11 +60,7 @@ export function FirecrawlToggle({
 						{dialog === "login_required" ? (
 							<>
 								<h3>Sign in required</h3>
-								<p>
-									Using Firecrawl requires an account. Sign up or log in first
-									(sign-in isn't built yet, but this switch already checks for
-									it).
-								</p>
+								<p>Using Firecrawl requires an account. Sign up or log in first.</p>
 							</>
 						) : (
 							<>
