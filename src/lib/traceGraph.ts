@@ -22,6 +22,9 @@ export interface TraceNode {
 	confidenceLevel?: ConfidenceLevel;
 	uncertaintyReasons?: string[];
 	divergenceStatus?: DivergenceStatus;
+	claimId?: number;
+	hasSources?: boolean;
+	claimSourceId?: number;
 	copiedBy?: number;
 	unverified?: boolean;
 	firstSeen?: boolean;
@@ -73,7 +76,12 @@ const LEVEL_RANK: Record<ConfidenceLevel, number> = {
 };
 
 const COL_WIDTH = 260;
-const ROW_HEIGHT = 160;
+// Tall enough for a fully-wrapped title at MAX_TITLE_LENGTH inside a 208px
+// card, plus its type label, meta line, and tags — real titles/claim text
+// routinely run past the width of a node, so a short fixed row height causes
+// consecutive rows to visually overlap.
+const ROW_HEIGHT = 230;
+const MAX_TITLE_LENGTH = 100;
 
 function hostnameOf(url: string): string {
 	try {
@@ -81,6 +89,10 @@ function hostnameOf(url: string): string {
 	} catch {
 		return url;
 	}
+}
+
+function truncateTitle(text: string): string {
+	return text.length > MAX_TITLE_LENGTH ? `${text.slice(0, MAX_TITLE_LENGTH)}…` : text;
 }
 
 export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
@@ -140,7 +152,7 @@ export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
 	nodes.push({
 		id: rootId,
 		type: "ARTICLE",
-		title: article.title,
+		title: truncateTitle(article.title),
 		domain: article.domain,
 		date: article.publishedAt ?? undefined,
 		excerpt: article.excerpt,
@@ -176,7 +188,7 @@ export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
 			nodes.push({
 				id: nodeId,
 				type: r.type === "cites" ? "SOURCE" : "ARTICLE",
-				title: other.title,
+				title: truncateTitle(other.title),
 				domain: other.domain,
 				date: other.publishedAt ?? undefined,
 				excerpt: other.excerpt,
@@ -218,16 +230,19 @@ export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
 		const confidence = claimConfidence(claim.signals, claim.firstSeenStatus);
 		const nodeId = `claim-${claim.id}`;
 		const x = col * COL_WIDTH;
+		const ownSources = claimSourceRows.filter((s) => s.claimId === claim.id);
 
 		nodes.push({
 			id: nodeId,
 			type: "CLAIM",
-			title: claim.text.length > 140 ? `${claim.text.slice(0, 140)}…` : claim.text,
+			title: truncateTitle(claim.text),
 			domain: `paragraph ${claim.paragraphIndex}`,
 			excerpt: claim.text,
 			confidenceLevel: confidence.level,
 			uncertaintyReasons: confidence.reasons,
 			unverified: confidence.level === "unverified",
+			claimId: claim.id,
+			hasSources: ownSources.length > 0,
 			x,
 			y: claimRowY,
 		});
@@ -245,7 +260,6 @@ export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
 			}
 		}
 
-		const ownSources = claimSourceRows.filter((s) => s.claimId === claim.id);
 		ownSources.forEach((s, row) => {
 			const sourceNodeId = `csource-${s.id}`;
 			const resolved = s.articleId ? otherById.get(s.articleId) : undefined;
@@ -257,11 +271,12 @@ export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
 			nodes.push({
 				id: sourceNodeId,
 				type: resolved ? "ARTICLE" : "SOURCE",
-				title: resolved?.title ?? s.title,
+				title: truncateTitle(resolved?.title ?? s.title),
 				domain: resolved?.domain ?? hostnameOf(s.url),
 				date: (resolved?.publishedAt ?? s.publishedAt) ?? undefined,
 				excerpt: resolved?.excerpt ?? s.description,
 				divergenceStatus: divergence?.status,
+				claimSourceId: resolved ? undefined : s.id,
 				x,
 				y: claimRowY + ROW_HEIGHT * (row + 1),
 			});

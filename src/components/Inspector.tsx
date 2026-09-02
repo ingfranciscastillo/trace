@@ -95,12 +95,33 @@ function getStats(
 	}
 }
 
+const FIND_SOURCES_ERRORS: Record<string, string> = {
+	missing_api_key: "Brave Search API key is not configured.",
+	unauthorized: "Brave Search rejected the API key.",
+	rate_limited: "Brave Search rate limit hit — try again shortly.",
+	request_failed: "Brave Search request failed.",
+};
+
+type FindSourcesResult =
+	| { ok: true; count: number }
+	| { ok: false; error: string };
+
 export function Inspector({
 	node,
 	trace,
+	onFindSources,
+	onResolveSource,
+	findSourcesPending,
+	resolveSourcePending,
+	findSourcesResult,
 }: {
 	node: TraceNode | null;
 	trace: TraceGraph;
+	onFindSources?: (claimId: number) => void;
+	onResolveSource?: (claimSourceId: number) => void;
+	findSourcesPending?: boolean;
+	resolveSourcePending?: boolean;
+	findSourcesResult?: FindSourcesResult;
 }) {
 	if (!node) {
 		return (
@@ -164,6 +185,42 @@ export function Inspector({
 					<p className="inspector__excerpt">
 						No further sources found beyond this point.
 					</p>
+				)}
+
+				{node.type === "CLAIM" && node.claimId && !node.hasSources && (
+					<div className="inspector__actions">
+						<button
+							type="button"
+							className="btn"
+							disabled={findSourcesPending}
+							onClick={() => onFindSources?.(node.claimId!)}
+						>
+							{findSourcesPending ? "SEARCHING…" : "FIND SOURCES (1 API call)"}
+						</button>
+						{findSourcesResult && !findSourcesResult.ok && (
+							<p className="inspector__excerpt inspector__excerpt--error">
+								{FIND_SOURCES_ERRORS[findSourcesResult.error] ?? findSourcesResult.error}
+							</p>
+						)}
+						{findSourcesResult?.ok && findSourcesResult.count === 0 && (
+							<p className="inspector__excerpt">
+								No search results found for this claim.
+							</p>
+						)}
+					</div>
+				)}
+
+				{node.type === "SOURCE" && node.claimSourceId && (
+					<div className="inspector__actions">
+						<button
+							type="button"
+							className="btn"
+							disabled={resolveSourcePending}
+							onClick={() => onResolveSource?.(node.claimSourceId!)}
+						>
+							{resolveSourcePending ? "FETCHING…" : "RESOLVE THIS SOURCE"}
+						</button>
+					</div>
 				)}
 			</div>
 		</div>

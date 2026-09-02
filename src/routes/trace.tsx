@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import {
 import { Inspector } from "../components/Inspector";
 import { Nav } from "../components/Nav";
 import { Timeline } from "../components/Timeline";
+import { findSources, resolveSource } from "../lib/chain.functions";
 import { traceQueryOptions } from "../lib/traceData";
 
 const searchSchema = z.object({
@@ -49,11 +50,24 @@ function TraceWorkspace() {
 	const { url } = Route.useSearch();
 	const { data: trace } = useSuspenseQuery(traceQueryOptions(url));
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [transform, setTransform] = useState<GraphTransform>({
 		x: 70,
 		y: 40,
 		scale: 1,
+	});
+
+	const invalidate = () =>
+		queryClient.invalidateQueries({ queryKey: ["trace", url] });
+
+	const findSourcesMutation = useMutation({
+		mutationFn: (claimId: number) => findSources({ data: claimId }),
+		onSuccess: invalidate,
+	});
+	const resolveSourceMutation = useMutation({
+		mutationFn: (claimSourceId: number) => resolveSource({ data: claimSourceId }),
+		onSuccess: invalidate,
 	});
 
 	if (!trace.ok) {
@@ -135,7 +149,27 @@ function TraceWorkspace() {
 			</div>
 
 			<Timeline entries={trace.timeline} />
-			<Inspector node={selectedNode} trace={trace} />
+			<Inspector
+				node={selectedNode}
+				trace={trace}
+				onFindSources={(claimId) => findSourcesMutation.mutate(claimId)}
+				onResolveSource={(claimSourceId) => resolveSourceMutation.mutate(claimSourceId)}
+				findSourcesPending={
+					findSourcesMutation.isPending &&
+					findSourcesMutation.variables === selectedNode?.claimId
+				}
+				resolveSourcePending={
+					resolveSourceMutation.isPending &&
+					resolveSourceMutation.variables === selectedNode?.claimSourceId
+				}
+				findSourcesResult={
+					findSourcesMutation.variables === selectedNode?.claimId
+						? findSourcesMutation.isError
+							? { ok: false as const, error: "request_failed" }
+							: findSourcesMutation.data
+						: undefined
+				}
+			/>
 		</div>
 	);
 }
