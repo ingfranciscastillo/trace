@@ -1,4 +1,5 @@
 import { Readability } from "@mozilla/readability";
+import { createServerFn } from "@tanstack/react-start";
 import { JSDOM } from "jsdom";
 import { z } from "zod";
 
@@ -192,10 +193,44 @@ function extractLinks(
 	return links;
 }
 
-export const __internal = {
-	fetchHtml,
-	buildDocument,
-	extractMetaFallback,
-	parseReadableArticle,
-	extractLinks,
-};
+export async function extractArticleImpl(
+	rawUrl: string,
+): Promise<ExtractResult> {
+	const parsed = extractUrlSchema.safeParse(rawUrl);
+	if (!parsed.success) {
+		throw new Error(`Invalid URL: ${rawUrl}`);
+	}
+	const url = parsed.data;
+	const domain = domainFromUrl(url);
+
+	const fetched = await fetchHtml(url);
+	if (!fetched.ok) {
+		return { ok: false, url, domain, error: fetched.error };
+	}
+
+	const document = buildDocument(fetched.html, fetched.finalUrl);
+	const meta = extractMetaFallback(document);
+	const article = parseReadableArticle(document, meta);
+
+	if (!article) {
+		return { ok: false, url, domain, error: "no_article_content" };
+	}
+
+	const links = extractLinks(article.contentHtml, fetched.finalUrl, domain);
+
+	return {
+		ok: true,
+		url,
+		domain,
+		title: article.title,
+		author: article.author,
+		publishedAt: article.publishedAt,
+		excerpt: article.textContent.slice(0, 500),
+		textLength: article.textContent.length,
+		links,
+	};
+}
+
+export const extractArticle = createServerFn({ method: "GET" })
+	.validator((data: unknown) => extractUrlSchema.parse(data))
+	.handler(async ({ data }) => extractArticleImpl(data));
