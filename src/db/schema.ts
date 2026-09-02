@@ -1,10 +1,12 @@
 import {
 	boolean,
 	integer,
+	jsonb,
 	pgTable,
 	serial,
 	text,
 	timestamp,
+	uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const articles = pgTable("articles", {
@@ -40,3 +42,28 @@ export const links = pgTable("links", {
 	isExternal: boolean("is_external").notNull(),
 	isCitation: boolean("is_citation").notNull(),
 });
+
+// For "cites": articleAId is the citing article, articleBId is the cited one (directional).
+// For "copied_from": the pair is unordered (articleAId < articleBId); olderArticleId names
+// whichever side is chronologically earlier, or null when dates are missing/equal —
+// i.e. "possible copy detected" vs "copy direction confirmed".
+export const relationships = pgTable(
+	"relationships",
+	{
+		id: serial().primaryKey(),
+		articleAId: integer("article_a_id")
+			.notNull()
+			.references(() => articles.id, { onDelete: "cascade" }),
+		articleBId: integer("article_b_id")
+			.notNull()
+			.references(() => articles.id, { onDelete: "cascade" }),
+		type: text().notNull(),
+		olderArticleId: integer("older_article_id").references(
+			() => articles.id,
+			{ onDelete: "set null" },
+		),
+		evidence: jsonb().notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(t) => [uniqueIndex("relationships_pair_type_idx").on(t.articleAId, t.articleBId, t.type)],
+);

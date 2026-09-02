@@ -2,11 +2,12 @@ import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { articles, claims, links } from "../db/schema";
 import type { ExtractOk } from "./extractArticle.functions";
+import { buildRelationships, type RelationshipCounts } from "./relationshipStore";
 
 export async function saveArticle(
 	result: ExtractOk,
-): Promise<{ articleId: number }> {
-	return db.transaction(async (tx) => {
+): Promise<{ articleId: number; relationships: RelationshipCounts }> {
+	const { articleId } = await db.transaction(async (tx) => {
 		const [savedArticle] = await tx
 			.insert(articles)
 			.values({
@@ -64,4 +65,7 @@ export async function saveArticle(
 
 		return { articleId };
 	});
+
+	const relationshipCounts = await buildRelationships(articleId, result.url);
+	return { articleId, relationships: relationshipCounts };
 }

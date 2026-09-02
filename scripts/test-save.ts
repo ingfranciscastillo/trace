@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { db } from "../src/db";
-import { articles, claims, links } from "../src/db/schema";
+import { articles, claims, links, relationships } from "../src/db/schema";
 import { extractArticleImpl } from "../src/lib/extractArticle.functions";
 import { saveArticle } from "../src/lib/articleStore";
 
@@ -18,8 +18,9 @@ if (!result.ok) {
 	process.exit(1);
 }
 
-const { articleId } = await saveArticle(result);
+const { articleId, relationships: relCounts } = await saveArticle(result);
 console.log("Saved article id:", articleId);
+console.log("Relationships built:", relCounts);
 
 const [storedArticle] = await db
 	.select()
@@ -44,5 +45,19 @@ console.log(
 	storedLinks.filter((l) => l.isCitation).length,
 	")",
 );
+
+const storedRelationships = await db
+	.select()
+	.from(relationships)
+	.where(
+		or(
+			eq(relationships.articleAId, articleId),
+			eq(relationships.articleBId, articleId),
+		),
+	);
+console.log("Stored relationships:", storedRelationships.length);
+for (const rel of storedRelationships) {
+	console.log(" ", rel.type, rel.articleAId, "->", rel.articleBId, rel.evidence);
+}
 
 process.exit(0);
