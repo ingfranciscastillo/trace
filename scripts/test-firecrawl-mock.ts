@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { firecrawlFetch, isFirecrawlEnabled } from "../src/lib/firecrawl";
+import { firecrawlFetch, isFirecrawlConfigured } from "../src/lib/firecrawl";
 
 function mockFetch(status: number, body: unknown) {
 	global.fetch = (async () =>
@@ -9,10 +9,9 @@ function mockFetch(status: number, body: unknown) {
 		})) as typeof fetch;
 }
 
-// Switch off (default): never enabled, never calls fetch, regardless of key.
-delete process.env.FIRECRAWL_ENABLED;
+// No key configured: never an active session, never calls fetch.
 delete process.env.FIRECRAWL_API_KEY;
-assert.equal(isFirecrawlEnabled(), false);
+assert.equal(isFirecrawlConfigured(), false);
 let fetchCalled = false;
 global.fetch = (async () => {
 	fetchCalled = true;
@@ -22,17 +21,11 @@ const off = await firecrawlFetch("https://example.com/article");
 assert.equal(off.ok, false);
 if (!off.ok) assert.equal(off.error, "not_configured");
 assert.equal(fetchCalled, false);
-console.log("PASS: switch off -> not_configured, no network call");
+console.log("PASS: no API key -> not_configured, no network call");
 
-// Switch on but no key: still not an active session.
-process.env.FIRECRAWL_ENABLED = "true";
-delete process.env.FIRECRAWL_API_KEY;
-assert.equal(isFirecrawlEnabled(), false);
-console.log("PASS: switch on without API key -> still disabled");
-
-// Switch on + key: enabled, parses a successful scrape response.
+// Key configured: session active, parses a successful scrape response.
 process.env.FIRECRAWL_API_KEY = "fake-key-for-mock-test";
-assert.equal(isFirecrawlEnabled(), true);
+assert.equal(isFirecrawlConfigured(), true);
 mockFetch(200, {
 	success: true,
 	data: {
@@ -46,7 +39,7 @@ if (ok.ok) {
 	assert.equal(ok.html, "<html><body>real page</body></html>");
 	assert.equal(ok.finalUrl, "https://example.com/article");
 }
-console.log("PASS: switch on + key -> parses successful scrape");
+console.log("PASS: API key configured -> parses successful scrape");
 
 // Error mapping.
 mockFetch(401, {});
@@ -67,6 +60,5 @@ assert.equal(noHtml.ok, false);
 if (!noHtml.ok) assert.equal(noHtml.error, "request_failed");
 console.log("PASS: success:false / missing html -> request_failed");
 
-delete process.env.FIRECRAWL_ENABLED;
 delete process.env.FIRECRAWL_API_KEY;
 console.log("\nAll Firecrawl mock tests passed. No real Firecrawl requests were made.");

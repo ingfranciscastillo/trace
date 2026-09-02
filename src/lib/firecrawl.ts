@@ -13,11 +13,11 @@ export type FirecrawlResult = FirecrawlOk | FirecrawlError;
 
 const FIRECRAWL_SCRAPE_URL = "https://api.firecrawl.dev/v1/scrape";
 
-// The switch (FIRECRAWL_ENABLED) is only ever honored alongside a real API
-// key — flipping it on without a configured session does nothing, rather
-// than failing loudly at request time.
-export function isFirecrawlEnabled(): boolean {
-	return process.env.FIRECRAWL_ENABLED === "true" && !!process.env.FIRECRAWL_API_KEY;
+// "Session" here just means a server-side API key is configured. The actual
+// on/off decision per request comes from the caller (the UI toggle) — this
+// only answers whether honoring that toggle is even possible.
+export function isFirecrawlConfigured(): boolean {
+	return !!process.env.FIRECRAWL_API_KEY;
 }
 
 interface FirecrawlResponse {
@@ -30,7 +30,7 @@ interface FirecrawlResponse {
 }
 
 export async function firecrawlFetch(url: string): Promise<FirecrawlResult> {
-	if (!isFirecrawlEnabled()) return { ok: false, error: "not_configured" };
+	if (!isFirecrawlConfigured()) return { ok: false, error: "not_configured" };
 	const apiKey = process.env.FIRECRAWL_API_KEY!;
 
 	let response: Response;

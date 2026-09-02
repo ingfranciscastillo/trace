@@ -5,7 +5,7 @@ import { isIP } from "node:net";
 import { lookup } from "node:dns/promises";
 import { z } from "zod";
 import { analyzeContent, type Claim } from "./extractClaims";
-import { firecrawlFetch, isFirecrawlEnabled } from "./firecrawl";
+import { firecrawlFetch, isFirecrawlConfigured } from "./firecrawl";
 
 export interface ExtractLink {
 	href: string;
@@ -109,13 +109,17 @@ interface FetchHtmlError {
 
 const MAX_REDIRECTS = 5;
 
-// Plain fetch first, always. Firecrawl only runs if that fails, the switch is
-// on, and a session (API key) is actually configured — and never as a way
-// around our own SSRF block, since that's a deliberate safety decision, not
-// a reachability problem.
-async function fetchHtml(url: string): Promise<FetchHtmlOk | FetchHtmlError> {
+// Plain fetch first, always. Firecrawl only runs if that fails, the caller
+// asked for it (useFirecrawl, driven by the UI toggle), and a session (API
+// key) is actually configured server-side — and never as a way around our
+// own SSRF block, since that's a deliberate safety decision, not a
+// reachability problem.
+async function fetchHtml(
+	url: string,
+	useFirecrawl: boolean,
+): Promise<FetchHtmlOk | FetchHtmlError> {
 	const direct = await fetchHtmlDirect(url);
-	if (direct.ok || direct.error === "blocked" || !isFirecrawlEnabled()) {
+	if (direct.ok || direct.error === "blocked" || !useFirecrawl || !isFirecrawlConfigured()) {
 		return direct;
 	}
 
@@ -301,6 +305,7 @@ function extractLinks(
 
 export async function extractArticleImpl(
 	rawUrl: string,
+	useFirecrawl = false,
 ): Promise<ExtractResult> {
 	const parsed = extractUrlSchema.safeParse(rawUrl);
 	if (!parsed.success) {
@@ -309,7 +314,7 @@ export async function extractArticleImpl(
 	const url = parsed.data;
 	const domain = domainFromUrl(url);
 
-	const fetched = await fetchHtml(url);
+	const fetched = await fetchHtml(url, useFirecrawl);
 	if (!fetched.ok) {
 		return { ok: false, url, domain, error: fetched.error };
 	}

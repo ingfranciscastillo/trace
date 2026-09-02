@@ -5,6 +5,7 @@ import { db } from "../db";
 import { articles } from "../db/schema";
 import { saveArticle } from "./articleStore";
 import { extractArticleImpl, extractUrlSchema } from "./extractArticle.functions";
+import { isFirecrawlConfigured } from "./firecrawl";
 import { buildTraceGraph, type TraceGraph } from "./traceGraph";
 
 export type TraceResult =
@@ -20,7 +21,15 @@ export type TraceResult =
 				| "blocked";
 	  };
 
-async function getTraceImpl(rawUrl: string): Promise<TraceResult> {
+const getTraceInput = z.object({
+	url: z.string(),
+	useFirecrawl: z.boolean().optional(),
+});
+
+async function getTraceImpl(
+	rawUrl: string,
+	useFirecrawl: boolean,
+): Promise<TraceResult> {
 	const parsed = extractUrlSchema.safeParse(rawUrl);
 	if (!parsed.success) return { ok: false, url: rawUrl, error: "invalid_url" };
 	const url = parsed.data;
@@ -31,7 +40,13 @@ async function getTraceImpl(rawUrl: string): Promise<TraceResult> {
 	if (existing) {
 		articleId = existing.id;
 	} else {
-		const extracted = await extractArticleImpl(url);
+		// Only actually attempted server-side if a session (API key) is
+		// configured — a toggle flipped on by an anonymous visitor can't force
+		// a real Firecrawl call to happen without one.
+		const extracted = await extractArticleImpl(
+			url,
+			useFirecrawl && isFirecrawlConfigured(),
+		);
 		if (!extracted.ok) return { ok: false, url, error: extracted.error };
 		const saved = await saveArticle(extracted);
 		articleId = saved.articleId;
@@ -42,5 +57,12 @@ async function getTraceImpl(rawUrl: string): Promise<TraceResult> {
 }
 
 export const getTrace = createServerFn({ method: "GET" })
-	.validator((data: unknown) => z.string().parse(data))
-	.handler(async ({ data }) => getTraceImpl(data));
+	.validator((data: unknown) => getTraceInput.parse(data))
+	.handler(async ({ data }) => getTraceImpl(data.url, data.useFirecrawl ?? false));
+
+// Lets the UI decide whether to even offer the Firecrawl toggle's "on" state
+// as meaningful — visible to everyone, but only true when the server side
+// actually has a session configured.
+export const getFirecrawlStatus = createServerFn({ method: "GET" }).handler(
+	async () => ({ configured: isFirecrawlConfigured() }),
+);

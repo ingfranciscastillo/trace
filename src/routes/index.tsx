@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { FirecrawlToggle } from "../components/FirecrawlToggle";
 import {
 	GraphCanvas,
 	type GraphTransform,
@@ -74,6 +75,7 @@ const DEMO_EDGES: TraceEdge[] = [
 function LandingPage() {
 	const navigate = useNavigate();
 	const [url, setUrl] = useState("");
+	const [useFirecrawl, setUseFirecrawl] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [transform] = useState<GraphTransform>({ x: 30, y: 20, scale: 0.92 });
 
@@ -81,7 +83,10 @@ function LandingPage() {
 		e.preventDefault();
 		if (!url.trim() || submitting) return;
 		setSubmitting(true);
-		navigate({ to: "/trace", search: { url: url.trim() } });
+		navigate({
+			to: "/trace",
+			search: { url: url.trim(), firecrawl: useFirecrawl },
+		});
 	}
 
 	return (
@@ -128,6 +133,8 @@ function LandingPage() {
 					{submitting ? "TRACING…" : "TRACE"}
 				</button>
 			</form>
+
+			<FirecrawlToggle checked={useFirecrawl} onChange={setUseFirecrawl} />
 
 			<div className="stat-row">
 				<span>

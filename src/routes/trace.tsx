@@ -2,6 +2,7 @@ import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-q
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
+import { FirecrawlToggle } from "../components/FirecrawlToggle";
 import {
 	clampScale,
 	GraphCanvas,
@@ -15,6 +16,7 @@ import { traceQueryOptions } from "../lib/traceData";
 
 const searchSchema = z.object({
 	url: z.string().catch(""),
+	firecrawl: z.boolean().catch(false),
 });
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -27,9 +29,9 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 export const Route = createFileRoute("/trace")({
 	validateSearch: (search) => searchSchema.parse(search),
-	loaderDeps: ({ search }) => ({ url: search.url }),
-	loader: ({ context: { queryClient }, deps: { url } }) =>
-		queryClient.query(traceQueryOptions(url)),
+	loaderDeps: ({ search }) => ({ url: search.url, firecrawl: search.firecrawl }),
+	loader: ({ context: { queryClient }, deps: { url, firecrawl } }) =>
+		queryClient.query(traceQueryOptions(url, firecrawl)),
 	pendingComponent: TracePending,
 	component: TraceWorkspace,
 });
@@ -47,8 +49,8 @@ function TracePending() {
 }
 
 function TraceWorkspace() {
-	const { url } = Route.useSearch();
-	const { data: trace } = useSuspenseQuery(traceQueryOptions(url));
+	const { url, firecrawl } = Route.useSearch();
+	const { data: trace } = useSuspenseQuery(traceQueryOptions(url, firecrawl));
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -71,14 +73,26 @@ function TraceWorkspace() {
 	});
 
 	if (!trace.ok) {
+		const canRetryWithFirecrawl =
+			!firecrawl && trace.error !== "invalid_url" && trace.error !== "blocked";
 		return (
 			<div className="workspace">
 				<Nav />
-				<div className="error-state">
-					{ERROR_MESSAGES[trace.error] ?? trace.error}
-					<button type="button" className="btn" onClick={() => navigate({ to: "/" })}>
-						BACK
-					</button>
+				<div className="error-state error-state--column">
+					<div>{ERROR_MESSAGES[trace.error] ?? trace.error}</div>
+					<div className="error-state__actions">
+						<button type="button" className="btn" onClick={() => navigate({ to: "/" })}>
+							BACK
+						</button>
+						{canRetryWithFirecrawl && (
+							<FirecrawlToggle
+								checked={false}
+								onChange={(next) => {
+									if (next) navigate({ to: "/trace", search: { url, firecrawl: true } });
+								}}
+							/>
+						)}
+					</div>
 				</div>
 			</div>
 		);

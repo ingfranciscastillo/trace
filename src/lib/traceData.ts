@@ -11,9 +11,9 @@ export type {
 } from "./traceGraph";
 export type { TraceResult } from "./traceGraph.functions";
 
-export function traceQueryOptions(url: string) {
+export function traceQueryOptions(url: string, useFirecrawl = false) {
 	return queryOptions({
-		queryKey: ["trace", url],
-		queryFn: () => getTrace({ data: url }),
+		queryKey: ["trace", url, useFirecrawl],
+		queryFn: () => getTrace({ data: { url, useFirecrawl } }),
 	});
 }
