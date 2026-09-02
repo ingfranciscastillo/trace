@@ -68,7 +68,8 @@ function TraceWorkspace() {
 		onSuccess: invalidate,
 	});
 	const resolveSourceMutation = useMutation({
-		mutationFn: (claimSourceId: number) => resolveSource({ data: claimSourceId }),
+		mutationFn: (claimSourceId: number) =>
+			resolveSource({ data: { claimSourceId, useFirecrawl: firecrawl } }),
 		onSuccess: invalidate,
 	});
 

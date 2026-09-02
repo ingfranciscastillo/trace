@@ -12,8 +12,15 @@ export const findSources = createServerFn({ method: "POST" })
 		return { ok: true as const, count: result.results.length };
 	});
 
+const resolveSourceInput = z.object({
+	claimSourceId: z.number().int().positive(),
+	useFirecrawl: z.boolean().optional(),
+});
+
 // One real HTTP fetch to the candidate source's URL, depth-capped and
 // dedup-by-URL server-side. Free, but still user-triggered, not automatic.
 export const resolveSource = createServerFn({ method: "POST" })
-	.validator((data: unknown) => z.number().int().positive().parse(data))
-	.handler(async ({ data: claimSourceId }) => resolveClaimSource(claimSourceId));
+	.validator((data: unknown) => resolveSourceInput.parse(data))
+	.handler(async ({ data }) =>
+		resolveClaimSource(data.claimSourceId, data.useFirecrawl ?? false),
+	);

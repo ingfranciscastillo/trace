@@ -65,6 +65,7 @@ export interface ResolveClaimSourceResult {
 // or recursing (this is the cycle/duplicate guard the spec asks for).
 export async function resolveClaimSource(
 	claimSourceId: number,
+	useFirecrawl = false,
 ): Promise<ResolveClaimSourceResult> {
 	const [source] = await db
 		.select()
@@ -95,7 +96,7 @@ export async function resolveClaimSource(
 		return { status: "depth_exceeded", articleId: null };
 	}
 
-	const extracted = await extractArticleImpl(source.url);
+	const extracted = await extractArticleImpl(source.url, useFirecrawl);
 	if (!extracted.ok) return { status: "extract_failed", articleId: null };
 
 	const { articleId } = await saveArticle(extracted, nextDepth);
