@@ -27,3 +27,15 @@ const meta = __internal.extractMetaFallback(document);
 
 console.log("Fetched", fetched.html.length, "bytes from", fetched.finalUrl);
 console.log("Meta fallback:", meta);
+
+const article = __internal.parseReadableArticle(document, meta);
+
+if (!article) {
+	console.error("No article content extracted");
+	process.exit(1);
+}
+
+console.log("Title:", article.title);
+console.log("Author:", article.author);
+console.log("Published:", article.publishedAt);
+console.log("Text length:", article.textContent.length);

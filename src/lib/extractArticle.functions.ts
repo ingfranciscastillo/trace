@@ -1,3 +1,4 @@
+import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import { z } from "zod";
 
@@ -115,4 +116,41 @@ function extractMetaFallback(document: Document): MetaFallback {
 	};
 }
 
-export const __internal = { fetchHtml, buildDocument, extractMetaFallback };
+interface ParsedArticle {
+	title: string;
+	author: string | null;
+	publishedAt: string | null;
+	contentHtml: string;
+	textContent: string;
+}
+
+function parseReadableArticle(
+	document: Document,
+	meta: MetaFallback,
+): ParsedArticle | null {
+	const reader = new Readability(document);
+	const article = reader.parse();
+
+	if (
+		!article ||
+		!article.textContent ||
+		article.textContent.trim().length === 0
+	) {
+		return null;
+	}
+
+	return {
+		title: article.title?.trim() || meta.title || "Untitled",
+		author: article.byline?.trim() || meta.author || null,
+		publishedAt: meta.publishedAt,
+		contentHtml: article.content ?? "",
+		textContent: article.textContent.trim(),
+	};
+}
+
+export const __internal = {
+	fetchHtml,
+	buildDocument,
+	extractMetaFallback,
+	parseReadableArticle,
+};
