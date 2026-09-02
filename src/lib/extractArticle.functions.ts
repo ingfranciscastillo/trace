@@ -5,6 +5,7 @@ import { isIP } from "node:net";
 import { lookup } from "node:dns/promises";
 import { z } from "zod";
 import { analyzeContent, type Claim } from "./extractClaims";
+import { firecrawlFetch, isFirecrawlEnabled } from "./firecrawl";
 
 export interface ExtractLink {
 	href: string;
@@ -108,7 +109,23 @@ interface FetchHtmlError {
 
 const MAX_REDIRECTS = 5;
 
-async function fetchHtml(
+// Plain fetch first, always. Firecrawl only runs if that fails, the switch is
+// on, and a session (API key) is actually configured — and never as a way
+// around our own SSRF block, since that's a deliberate safety decision, not
+// a reachability problem.
+async function fetchHtml(url: string): Promise<FetchHtmlOk | FetchHtmlError> {
+	const direct = await fetchHtmlDirect(url);
+	if (direct.ok || direct.error === "blocked" || !isFirecrawlEnabled()) {
+		return direct;
+	}
+
+	const viaFirecrawl = await firecrawlFetch(url);
+	if (!viaFirecrawl.ok) return direct;
+
+	return { ok: true, html: viaFirecrawl.html, finalUrl: viaFirecrawl.finalUrl };
+}
+
+async function fetchHtmlDirect(
 	url: string,
 ): Promise<FetchHtmlOk | FetchHtmlError> {
 	let currentUrl = url;
