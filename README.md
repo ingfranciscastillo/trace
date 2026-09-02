@@ -43,6 +43,12 @@ same demonstration graph (seeded with whatever domain you type), through a `quer
 with an artificial delay — this is where a real extraction/citation-graph service
 would plug in, without touching the routing, query-caching or UI layers above it.
 
+`src/lib/extractArticle.functions.ts` is the first real piece: given a URL it
+fetches the page and runs Readability/jsdom extraction (title, author, date,
+excerpt, outbound links). It's not wired into `/trace` yet — `traceData.ts`
+still drives the UI — verify it standalone with
+`pnpm extract:test <url>`.
+
 ## Notes on the graph
 
 - Nodes are plain positioned buttons; edges are orthogonal SVG paths recomputed from
