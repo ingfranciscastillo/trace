@@ -12,18 +12,25 @@ import { buildTraceGraph, type TraceGraph } from "./traceGraph";
 
 // Anonymous visitors can trace freely, but nothing is recorded for them —
 // History is opt-in by virtue of being signed in, both to view and to save.
-async function recordSearch(articleId: number): Promise<void> {
-	const headers = getRequestHeaders();
-	const session = await auth.api.getSession({ headers });
-	if (!session) return;
+// Headers are captured by the caller, synchronously, before any other await —
+// grabbing them this deep in the call chain risks losing the request context
+// that getRequestHeaders() depends on. Best-effort: recording a search should
+// never be able to break viewing the trace itself.
+async function recordSearch(articleId: number, headers: Headers): Promise<void> {
+	try {
+		const session = await auth.api.getSession({ headers });
+		if (!session) return;
 
-	await db
-		.insert(searches)
-		.values({ userId: session.user.id, articleId })
-		.onConflictDoUpdate({
-			target: [searches.userId, searches.articleId],
-			set: { searchedAt: new Date() },
-		});
+		await db
+			.insert(searches)
+			.values({ userId: session.user.id, articleId })
+			.onConflictDoUpdate({
+				target: [searches.userId, searches.articleId],
+				set: { searchedAt: new Date() },
+			});
+	} catch {
+		// Non-fatal — the trace itself already succeeded.
+	}
 }
 
 export type TraceResult =
@@ -47,6 +54,7 @@ const getTraceInput = z.object({
 async function getTraceImpl(
 	rawUrl: string,
 	useFirecrawl: boolean,
+	headers: Headers,
 ): Promise<TraceResult> {
 	const parsed = extractUrlSchema.safeParse(rawUrl);
 	if (!parsed.success) return { ok: false, url: rawUrl, error: "invalid_url" };
@@ -70,7 +78,7 @@ async function getTraceImpl(
 		articleId = saved.articleId;
 	}
 
-	await recordSearch(articleId);
+	await recordSearch(articleId, headers);
 
 	const graph = await buildTraceGraph(articleId);
 	return { ok: true, ...graph };
@@ -78,7 +86,10 @@ async function getTraceImpl(
 
 export const getTrace = createServerFn({ method: "GET" })
 	.validator((data: unknown) => getTraceInput.parse(data))
-	.handler(async ({ data }) => getTraceImpl(data.url, data.useFirecrawl ?? false));
+	.handler(async ({ data }) => {
+		const headers = getRequestHeaders();
+		return getTraceImpl(data.url, data.useFirecrawl ?? false, headers);
+	});
 
 // Lets the UI decide whether to even offer the Firecrawl toggle's "on" state
 // as meaningful — visible to everyone, but only true when the server side

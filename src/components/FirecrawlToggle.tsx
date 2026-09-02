@@ -21,7 +21,10 @@ export function FirecrawlToggle({
 		}
 
 		setChecking(true);
-		const session = await getSession();
+		// A stale/invalid session cookie can make the session check itself throw
+		// (rather than just resolving to null) — treat that the same as "not
+		// signed in" instead of leaving the switch stuck.
+		const session = await getSession().catch(() => null);
 		if (!session) {
 			setChecking(false);
 			setDialog("login_required");

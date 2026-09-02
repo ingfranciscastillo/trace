@@ -54,6 +54,7 @@ function TraceWorkspace() {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [maxResults, setMaxResults] = useState(3);
 	const [transform, setTransform] = useState<GraphTransform>({
 		x: 70,
 		y: 40,
@@ -64,7 +65,8 @@ function TraceWorkspace() {
 		queryClient.invalidateQueries({ queryKey: ["trace", url] });
 
 	const findSourcesMutation = useMutation({
-		mutationFn: (claimId: number) => findSources({ data: claimId }),
+		mutationFn: (vars: { claimId: number; maxResults: number }) =>
+			findSources({ data: vars }),
 		onSuccess: invalidate,
 	});
 	const resolveSourceMutation = useMutation({
@@ -167,18 +169,20 @@ function TraceWorkspace() {
 			<Inspector
 				node={selectedNode}
 				trace={trace}
-				onFindSources={(claimId) => findSourcesMutation.mutate(claimId)}
+				onFindSources={(claimId) => findSourcesMutation.mutate({ claimId, maxResults })}
 				onResolveSource={(claimSourceId) => resolveSourceMutation.mutate(claimSourceId)}
+				maxResults={maxResults}
+				onMaxResultsChange={setMaxResults}
 				findSourcesPending={
 					findSourcesMutation.isPending &&
-					findSourcesMutation.variables === selectedNode?.claimId
+					findSourcesMutation.variables?.claimId === selectedNode?.claimId
 				}
 				resolveSourcePending={
 					resolveSourceMutation.isPending &&
 					resolveSourceMutation.variables === selectedNode?.claimSourceId
 				}
 				findSourcesResult={
-					findSourcesMutation.variables === selectedNode?.claimId
+					findSourcesMutation.variables?.claimId === selectedNode?.claimId
 						? findSourcesMutation.isError
 							? { ok: false as const, error: "request_failed" }
 							: findSourcesMutation.data

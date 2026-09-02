@@ -5,7 +5,10 @@ import { findExternalSourcesForClaim, type SearchResult } from "./braveSearch";
 import { extractArticleImpl } from "./extractArticle.functions";
 import { saveArticle } from "./articleStore";
 
-const MAX_RESULTS_PER_CLAIM = 3;
+export const DEFAULT_RESULTS_PER_CLAIM = 3;
+// Anonymous default. Anything past this needs a session — see findSources in
+// chain.functions.ts, same gating shape as the Firecrawl switch.
+export const MAX_RESULTS_PER_CLAIM = 10;
 
 // How many hops from a user-submitted root a discovered source may be saved at.
 // Kept small on purpose: each level can fan out into more searches and fetches.
@@ -13,7 +16,11 @@ export const MAX_CHAIN_DEPTH = 2;
 
 // One Brave Search call, scoped to a single claim. Never called automatically —
 // the caller decides which claims are worth spending a request on.
-export async function findSourcesForClaim(claimId: number): Promise<SearchResult> {
+export async function findSourcesForClaim(
+	claimId: number,
+	maxResults = DEFAULT_RESULTS_PER_CLAIM,
+): Promise<SearchResult> {
+	const clampedMax = Math.min(MAX_RESULTS_PER_CLAIM, Math.max(1, maxResults));
 	const [claim] = await db.select().from(claims).where(eq(claims.id, claimId));
 	if (!claim) throw new Error(`Claim ${claimId} not found`);
 	const [parentArticle] = await db
@@ -21,7 +28,7 @@ export async function findSourcesForClaim(claimId: number): Promise<SearchResult
 		.from(articles)
 		.where(eq(articles.id, claim.articleId));
 
-	const result = await findExternalSourcesForClaim(claim.text);
+	const result = await findExternalSourcesForClaim(claim.text, clampedMax + 2);
 	if (!result.ok) return result;
 
 	// A claim's own exact wording often ranks its own article as a top search
@@ -29,7 +36,7 @@ export async function findSourcesForClaim(claimId: number): Promise<SearchResult
 	// claim to itself would always trivially "match", so it's excluded before
 	// it ever becomes a claim_sources row.
 	const withoutSelf = result.results.filter((r) => r.url !== parentArticle?.url);
-	const top = withoutSelf.slice(0, MAX_RESULTS_PER_CLAIM);
+	const top = withoutSelf.slice(0, clampedMax);
 	if (top.length > 0) {
 		await db
 			.insert(claimSources)

@@ -84,7 +84,10 @@ export async function searchWeb(query: string, count = 5): Promise<SearchResult>
 	return { ok: true, results };
 }
 
-export function findExternalSourcesForClaim(claimText: string): Promise<SearchResult> {
+export function findExternalSourcesForClaim(
+	claimText: string,
+	count = 5,
+): Promise<SearchResult> {
 	const query = claimText.replace(/\[\d+\]/g, "").trim().slice(0, 300);
-	return searchWeb(query);
+	return searchWeb(query, count);
 }

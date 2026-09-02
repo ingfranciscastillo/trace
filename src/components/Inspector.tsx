@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { ResultsCountControl } from "./ResultsCountControl";
 import type { TraceEdge, TraceGraph, TraceNode } from "../lib/traceGraph";
 
 interface Stat {
@@ -112,6 +113,8 @@ export function Inspector({
 	trace,
 	onFindSources,
 	onResolveSource,
+	maxResults = 3,
+	onMaxResultsChange,
 	findSourcesPending,
 	resolveSourcePending,
 	findSourcesResult,
@@ -120,6 +123,8 @@ export function Inspector({
 	trace: TraceGraph;
 	onFindSources?: (claimId: number) => void;
 	onResolveSource?: (claimSourceId: number) => void;
+	maxResults?: number;
+	onMaxResultsChange?: (next: number) => void;
 	findSourcesPending?: boolean;
 	resolveSourcePending?: boolean;
 	findSourcesResult?: FindSourcesResult;
@@ -209,6 +214,11 @@ export function Inspector({
 
 				{node.type === "CLAIM" && node.claimId && !node.hasSources && (
 					<div className="inspector__actions">
+						<ResultsCountControl
+							value={maxResults}
+							onChange={(n) => onMaxResultsChange?.(n)}
+							disabled={findSourcesPending}
+						/>
 						<button
 							type="button"
 							className="btn"
