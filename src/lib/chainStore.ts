@@ -16,11 +16,20 @@ export const MAX_CHAIN_DEPTH = 2;
 export async function findSourcesForClaim(claimId: number): Promise<SearchResult> {
 	const [claim] = await db.select().from(claims).where(eq(claims.id, claimId));
 	if (!claim) throw new Error(`Claim ${claimId} not found`);
+	const [parentArticle] = await db
+		.select()
+		.from(articles)
+		.where(eq(articles.id, claim.articleId));
 
 	const result = await findExternalSourcesForClaim(claim.text);
 	if (!result.ok) return result;
 
-	const top = result.results.slice(0, MAX_RESULTS_PER_CLAIM);
+	// A claim's own exact wording often ranks its own article as a top search
+	// hit — that's not a source, it's the page we already have. Comparing a
+	// claim to itself would always trivially "match", so it's excluded before
+	// it ever becomes a claim_sources row.
+	const withoutSelf = result.results.filter((r) => r.url !== parentArticle?.url);
+	const top = withoutSelf.slice(0, MAX_RESULTS_PER_CLAIM);
 	if (top.length > 0) {
 		await db
 			.insert(claimSources)
