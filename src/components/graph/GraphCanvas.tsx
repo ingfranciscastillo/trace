@@ -75,13 +75,26 @@ export function GraphCanvas({
 			const jog = Math.min(28, Math.max(8, gap * 0.25));
 			const midY = sy + jog;
 
+			// Same column as its target (e.g. a claim and one of several sources
+			// stacked beneath it) — a straight vertical run would cut through any
+			// sibling node stacked in between. Detour through the gutter instead.
+			const sameColumn = Math.abs(sx - tx) < 1;
+			const d = sameColumn
+				? (() => {
+						const laneX = tx + to.offsetWidth / 2 + 20;
+						const endJog = Math.min(28, Math.max(8, gap * 0.25));
+						const approachY = ty - endJog;
+						return `M ${sx} ${sy} L ${sx} ${midY} L ${laneX} ${midY} L ${laneX} ${approachY} L ${tx} ${approachY} L ${tx} ${ty}`;
+					})()
+				: `M ${sx} ${sy} L ${sx} ${midY} L ${tx} ${midY} L ${tx} ${ty}`;
+
 			next.push({
 				id: e.id,
 				from: e.from,
 				to: e.to,
 				copied: e.kind === "copied_from",
 				weak: e.confidenceLevel === "low" || e.confidenceLevel === "unverified",
-				d: `M ${sx} ${sy} L ${sx} ${midY} L ${tx} ${midY} L ${tx} ${ty}`,
+				d,
 			});
 		}
 
