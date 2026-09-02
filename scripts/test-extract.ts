@@ -22,4 +22,8 @@ if (!fetched.ok) {
 	process.exit(1);
 }
 
+const document = __internal.buildDocument(fetched.html, fetched.finalUrl);
+const meta = __internal.extractMetaFallback(document);
+
 console.log("Fetched", fetched.html.length, "bytes from", fetched.finalUrl);
+console.log("Meta fallback:", meta);

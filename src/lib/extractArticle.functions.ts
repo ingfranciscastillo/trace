@@ -1,3 +1,4 @@
+import { JSDOM } from "jsdom";
 import { z } from "zod";
 
 export interface ExtractLink {
@@ -81,4 +82,37 @@ async function fetchHtml(
 	return { ok: true, html, finalUrl: response.url || url };
 }
 
-export const __internal = { fetchHtml };
+function buildDocument(html: string, url: string): Document {
+	const dom = new JSDOM(html, { url });
+	return dom.window.document;
+}
+
+interface MetaFallback {
+	title: string | null;
+	author: string | null;
+	publishedAt: string | null;
+}
+
+function extractMetaFallback(document: Document): MetaFallback {
+	const ogTitle = document
+		.querySelector('meta[property="og:title"]')
+		?.getAttribute("content");
+	const titleTag = document.querySelector("title")?.textContent;
+	const metaAuthor = document
+		.querySelector('meta[name="author"]')
+		?.getAttribute("content");
+	const metaPublished = document
+		.querySelector('meta[property="article:published_time"]')
+		?.getAttribute("content");
+	const timeEl = document
+		.querySelector("time[datetime]")
+		?.getAttribute("datetime");
+
+	return {
+		title: ogTitle?.trim() || titleTag?.trim() || null,
+		author: metaAuthor?.trim() || null,
+		publishedAt: metaPublished?.trim() || timeEl?.trim() || null,
+	};
+}
+
+export const __internal = { fetchHtml, buildDocument, extractMetaFallback };
