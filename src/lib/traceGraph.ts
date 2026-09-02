@@ -36,7 +36,7 @@ export interface TraceEdge {
 }
 
 export interface TimelineEntry {
-	date: string;
+	date: string | null;
 	label: string;
 	domain: string;
 }
@@ -279,12 +279,26 @@ export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
 			domain: hostnameOf(s.url),
 		})),
 	];
-	const timeline = timelineCandidates
-		.filter(
-			(t): t is { date: string; label: string; domain: string } =>
-				!!t.date && !Number.isNaN(Date.parse(t.date)),
-		)
-		.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+	const isDated = (t: (typeof timelineCandidates)[number]) =>
+		!!t.date && !Number.isNaN(Date.parse(t.date));
+	const dedupe = (entries: typeof timelineCandidates) => {
+		const seen = new Set<string>();
+		return entries.filter((t) => {
+			const key = `${t.date ?? ""}|${t.label}|${t.domain}`;
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	};
+	const dated = dedupe(timelineCandidates.filter(isDated)).sort(
+		(a, b) => Date.parse(a.date!) - Date.parse(b.date!),
+	);
+	const undated = dedupe(timelineCandidates.filter((t) => !isDated(t))).map(
+		(t) => ({ ...t, date: null }),
+	);
+	// Dated entries first in chronological order, then unknown-date ones flagged
+	// separately — never guessed into a position they don't belong.
+	const timeline: TimelineEntry[] = [...dated, ...undated];
 
 	const unverifiedCount = articleClaims.filter(
 		(c) => claimConfidence(c.signals, c.firstSeenStatus).level === "unverified",

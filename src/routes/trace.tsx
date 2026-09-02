@@ -9,6 +9,7 @@ import {
 } from "../components/graph/GraphCanvas";
 import { Inspector } from "../components/Inspector";
 import { Nav } from "../components/Nav";
+import { Timeline } from "../components/Timeline";
 import { traceQueryOptions } from "../lib/traceData";
 
 const searchSchema = z.object({
@@ -133,6 +134,7 @@ function TraceWorkspace() {
 				/>
 			</div>
 
+			<Timeline entries={trace.timeline} />
 			<Inspector node={selectedNode} trace={trace} />
 		</div>
 	);
