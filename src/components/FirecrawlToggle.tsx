@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { getSession } from "../lib/auth.functions";
 import { getFirecrawlStatus } from "../lib/traceGraph.functions";
+
+type DialogKind = "login_required" | "not_configured" | null;
 
 export function FirecrawlToggle({
 	checked,
@@ -9,7 +12,7 @@ export function FirecrawlToggle({
 	onChange: (next: boolean) => void;
 }) {
 	const [checking, setChecking] = useState(false);
-	const [showDialog, setShowDialog] = useState(false);
+	const [dialog, setDialog] = useState<DialogKind>(null);
 
 	async function handleChange() {
 		if (checked) {
@@ -18,11 +21,18 @@ export function FirecrawlToggle({
 		}
 
 		setChecking(true);
+		const session = await getSession();
+		if (!session) {
+			setChecking(false);
+			setDialog("login_required");
+			return;
+		}
+
 		const status = await getFirecrawlStatus();
 		setChecking(false);
 
 		if (!status.configured) {
-			setShowDialog(true);
+			setDialog("not_configured");
 			return;
 		}
 		onChange(true);
@@ -44,20 +54,30 @@ export function FirecrawlToggle({
 				<span>{checking ? "checking session…" : "use Firecrawl if blocked"}</span>
 			</label>
 
-			{showDialog && (
-				<div className="dialog-overlay" onClick={() => setShowDialog(false)}>
+			{dialog && (
+				<div className="dialog-overlay" onClick={() => setDialog(null)}>
 					<div className="dialog" onClick={(e) => e.stopPropagation()}>
-						<h3>No Firecrawl session</h3>
-						<p>
-							This server has no Firecrawl API key configured, so the switch
-							has nothing to fall back to. Extraction will keep using a plain
-							fetch, which some sites (Cloudflare, Akamai, etc.) will block.
-						</p>
-						<button
-							type="button"
-							className="btn"
-							onClick={() => setShowDialog(false)}
-						>
+						{dialog === "login_required" ? (
+							<>
+								<h3>Sign in required</h3>
+								<p>
+									Using Firecrawl requires an account. Sign up or log in first
+									(sign-in isn't built yet, but this switch already checks for
+									it).
+								</p>
+							</>
+						) : (
+							<>
+								<h3>No Firecrawl session</h3>
+								<p>
+									This server has no Firecrawl API key configured, so the switch
+									has nothing to fall back to. Extraction will keep using a
+									plain fetch, which some sites (Cloudflare, Akamai, etc.) will
+									block.
+								</p>
+							</>
+						)}
+						<button type="button" className="btn" onClick={() => setDialog(null)}>
 							OK
 						</button>
 					</div>

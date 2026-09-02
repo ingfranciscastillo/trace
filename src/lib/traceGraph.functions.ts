@@ -62,7 +62,9 @@ export const getTrace = createServerFn({ method: "GET" })
 
 // Lets the UI decide whether to even offer the Firecrawl toggle's "on" state
 // as meaningful — visible to everyone, but only true when the server side
-// actually has a session configured.
-export const getFirecrawlStatus = createServerFn({ method: "GET" }).handler(
+// actually has a session configured. POST, not GET: this takes no arguments,
+// so a GET would hit the exact same URL every time and risk being served
+// from a stale browser cache instead of re-checking the server.
+export const getFirecrawlStatus = createServerFn({ method: "POST" }).handler(
 	async () => ({ configured: isFirecrawlConfigured() }),
 );
