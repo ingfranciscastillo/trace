@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom";
+import { splitSentences } from "./textUtils";
 
 export type ClaimSignal = "statistic" | "attribution" | "citation_marker";
 
@@ -19,13 +20,6 @@ const CITATION_MARKER_PATTERN = /\[\d+\]/;
 
 const CITATION_ANCHOR_TEXT_PATTERN =
 	/\b(study|report|source|data|survey|dataset|paper|findings|research|estudio|informe|fuente|datos|encuesta|investigaci[oó]n)\b/i;
-
-function splitSentences(text: string): string[] {
-	return text
-		.split(/(?<=[.!?])\s+/)
-		.map((s) => s.trim())
-		.filter((s) => s.length > 0);
-}
 
 function detectSignals(sentence: string): ClaimSignal[] {
 	const signals: ClaimSignal[] = [];

@@ -19,7 +19,8 @@
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio",
     "extract:test": "tsx scripts/test-extract.ts",
-    "extract:save": "tsx scripts/test-save.ts"
+    "extract:save": "tsx scripts/test-save.ts",
+    "extract:compare": "tsx scripts/test-compare.ts"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",
