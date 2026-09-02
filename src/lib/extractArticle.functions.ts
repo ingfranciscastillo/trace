@@ -4,11 +4,13 @@ import { JSDOM } from "jsdom";
 import { isIP } from "node:net";
 import { lookup } from "node:dns/promises";
 import { z } from "zod";
+import { analyzeContent, type Claim } from "./extractClaims";
 
 export interface ExtractLink {
 	href: string;
 	text: string;
 	isExternal: boolean;
+	isCitation: boolean;
 }
 
 export interface ExtractOk {
@@ -21,6 +23,7 @@ export interface ExtractOk {
 	excerpt: string;
 	textLength: number;
 	links: ExtractLink[];
+	claims: Claim[];
 }
 
 export interface ExtractError {
@@ -268,6 +271,7 @@ function extractLinks(
 			href,
 			text: anchor.textContent?.trim() ?? "",
 			isExternal: resolved.hostname.replace(/^www\./, "") !== domain,
+			isCitation: false,
 		});
 	}
 
@@ -298,6 +302,14 @@ export async function extractArticleImpl(
 	}
 
 	const links = extractLinks(article.contentHtml, fetched.finalUrl, domain);
+	const { claims, citationHrefs } = analyzeContent(
+		article.contentHtml,
+		fetched.finalUrl,
+	);
+	const linksWithCitations = links.map((link) => ({
+		...link,
+		isCitation: citationHrefs.has(link.href),
+	}));
 
 	return {
 		ok: true,
@@ -308,7 +320,8 @@ export async function extractArticleImpl(
 		publishedAt: article.publishedAt,
 		excerpt: article.textContent.slice(0, 500),
 		textLength: article.textContent.length,
-		links,
+		links: linksWithCitations,
+		claims,
 	};
 }
 

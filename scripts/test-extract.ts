@@ -10,6 +10,21 @@ if (!url) {
 extractArticleImpl(url)
 	.then((result) => {
 		console.log(JSON.stringify(result, null, 2));
+
+		if (result.ok) {
+			console.log(`\n${result.claims.length} claims found:`);
+			for (const claim of result.claims.slice(0, 10)) {
+				console.log(
+					` - [p${claim.paragraphIndex}] (${claim.signals.join(", ")}) ${claim.text}`,
+				);
+			}
+
+			const citationLinks = result.links.filter((l) => l.isCitation);
+			console.log(`\n${citationLinks.length} links flagged as citations:`);
+			for (const link of citationLinks.slice(0, 10)) {
+				console.log(` - ${link.href}`);
+			}
+		}
 	})
 	.catch((error) => {
 		console.error("Unexpected error:", error);
