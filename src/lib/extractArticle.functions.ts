@@ -1,6 +1,8 @@
 import { Readability } from "@mozilla/readability";
 import { createServerFn } from "@tanstack/react-start";
 import { JSDOM } from "jsdom";
+import { isIP } from "node:net";
+import { lookup } from "node:dns/promises";
 import { z } from "zod";
 
 export interface ExtractLink {
@@ -25,19 +27,65 @@ export interface ExtractError {
 	ok: false;
 	url: string;
 	domain: string;
-	error: "fetch_failed" | "not_html" | "no_article_content";
+	error: "fetch_failed" | "not_html" | "no_article_content" | "blocked";
 }
 
 export type ExtractResult = ExtractOk | ExtractError;
 
+function isPrivateOrReservedIp(ip: string): boolean {
+	const version = isIP(ip);
+
+	if (version === 4) {
+		const [a, b] = ip.split(".").map(Number);
+		if (a === 10) return true;
+		if (a === 127) return true;
+		if (a === 0) return true;
+		if (a === 169 && b === 254) return true;
+		if (a === 172 && b >= 16 && b <= 31) return true;
+		if (a === 192 && b === 168) return true;
+		if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+		if (a >= 224) return true; // multicast / reserved
+		return false;
+	}
+
+	if (version === 6) {
+		const normalized = ip.toLowerCase();
+		if (normalized === "::1") return true;
+		if (normalized.startsWith("::ffff:")) {
+			const mapped = normalized.slice("::ffff:".length);
+			return isIP(mapped) === 4 ? isPrivateOrReservedIp(mapped) : false;
+		}
+		if (normalized.startsWith("fc") || normalized.startsWith("fd")) {
+			return true; // fc00::/7 unique local
+		}
+		if (/^fe[89ab]/.test(normalized)) return true; // fe80::/10 link-local
+		return false;
+	}
+
+	return false;
+}
+
+function isDangerousHostname(hostname: string): boolean {
+	const lower = hostname.toLowerCase();
+	if (lower === "localhost" || lower.endsWith(".localhost")) return true;
+
+	const ipVersion = isIP(lower);
+	if (ipVersion) return isPrivateOrReservedIp(lower);
+
+	return false;
+}
+
 export const extractUrlSchema = z.string().refine((value) => {
 	try {
 		const parsed = new URL(value);
-		return parsed.protocol === "http:" || parsed.protocol === "https:";
+		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+			return false;
+		}
+		return !isDangerousHostname(parsed.hostname);
 	} catch {
 		return false;
 	}
-}, "Must be a valid http or https URL");
+}, "Must be a valid, non-internal http or https URL");
 
 function domainFromUrl(url: string): string {
 	return new URL(url).hostname.replace(/^www\./, "");
@@ -51,37 +99,70 @@ interface FetchHtmlOk {
 
 interface FetchHtmlError {
 	ok: false;
-	error: "fetch_failed" | "not_html";
+	error: "fetch_failed" | "not_html" | "blocked";
 }
+
+const MAX_REDIRECTS = 5;
 
 async function fetchHtml(
 	url: string,
 ): Promise<FetchHtmlOk | FetchHtmlError> {
-	let response: Response;
-	try {
-		response = await fetch(url, {
-			headers: {
-				"User-Agent":
-					"Mozilla/5.0 (compatible; TraceBot/0.1; +https://trace.example/bot)",
-			},
-			signal: AbortSignal.timeout(10_000),
-			redirect: "follow",
-		});
-	} catch {
-		return { ok: false, error: "fetch_failed" };
+	let currentUrl = url;
+
+	for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+		const hostname = new URL(currentUrl).hostname;
+
+		if (isDangerousHostname(hostname)) {
+			return { ok: false, error: "blocked" };
+		}
+
+		let resolvedIp: string;
+		try {
+			resolvedIp = (await lookup(hostname)).address;
+		} catch {
+			return { ok: false, error: "fetch_failed" };
+		}
+		if (isPrivateOrReservedIp(resolvedIp)) {
+			return { ok: false, error: "blocked" };
+		}
+
+		let response: Response;
+		try {
+			response = await fetch(currentUrl, {
+				headers: {
+					"User-Agent":
+						"Mozilla/5.0 (compatible; TraceBot/0.1; +https://trace.example/bot)",
+				},
+				signal: AbortSignal.timeout(10_000),
+				redirect: "manual",
+			});
+		} catch {
+			return { ok: false, error: "fetch_failed" };
+		}
+
+		if (response.status >= 300 && response.status < 400) {
+			const location = response.headers.get("location");
+			if (!location) {
+				return { ok: false, error: "fetch_failed" };
+			}
+			currentUrl = new URL(location, currentUrl).href;
+			continue;
+		}
+
+		if (!response.ok) {
+			return { ok: false, error: "fetch_failed" };
+		}
+
+		const contentType = response.headers.get("content-type") ?? "";
+		if (!contentType.includes("text/html")) {
+			return { ok: false, error: "not_html" };
+		}
+
+		const html = await response.text();
+		return { ok: true, html, finalUrl: currentUrl };
 	}
 
-	if (!response.ok) {
-		return { ok: false, error: "fetch_failed" };
-	}
-
-	const contentType = response.headers.get("content-type") ?? "";
-	if (!contentType.includes("text/html")) {
-		return { ok: false, error: "not_html" };
-	}
-
-	const html = await response.text();
-	return { ok: true, html, finalUrl: response.url || url };
+	return { ok: false, error: "fetch_failed" };
 }
 
 function buildDocument(html: string, url: string): Document {
