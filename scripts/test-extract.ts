@@ -39,3 +39,18 @@ console.log("Title:", article.title);
 console.log("Author:", article.author);
 console.log("Published:", article.publishedAt);
 console.log("Text length:", article.textContent.length);
+
+const domain = new URL(fetched.finalUrl).hostname.replace(/^www\./, "");
+const links = __internal.extractLinks(
+	article.contentHtml,
+	fetched.finalUrl,
+	domain,
+);
+console.log("Links found:", links.length);
+for (const link of links.slice(0, 10)) {
+	console.log(
+		" -",
+		link.isExternal ? "[external]" : "[internal]",
+		link.href,
+	);
+}

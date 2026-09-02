@@ -148,9 +148,54 @@ function parseReadableArticle(
 	};
 }
 
+function extractLinks(
+	contentHtml: string,
+	baseUrl: string,
+	domain: string,
+): ExtractLink[] {
+	if (!contentHtml) return [];
+
+	const dom = new JSDOM(contentHtml, { url: baseUrl });
+	const anchors = Array.from(
+		dom.window.document.querySelectorAll("a[href]"),
+	);
+
+	const seen = new Set<string>();
+	const links: ExtractLink[] = [];
+
+	for (const anchor of anchors) {
+		const rawHref = anchor.getAttribute("href");
+		if (!rawHref) continue;
+
+		let resolved: URL;
+		try {
+			resolved = new URL(rawHref, baseUrl);
+		} catch {
+			continue;
+		}
+
+		if (resolved.protocol !== "http:" && resolved.protocol !== "https:") {
+			continue;
+		}
+
+		const href = resolved.href;
+		if (seen.has(href)) continue;
+		seen.add(href);
+
+		links.push({
+			href,
+			text: anchor.textContent?.trim() ?? "",
+			isExternal: resolved.hostname.replace(/^www\./, "") !== domain,
+		});
+	}
+
+	return links;
+}
+
 export const __internal = {
 	fetchHtml,
 	buildDocument,
 	extractMetaFallback,
 	parseReadableArticle,
+	extractLinks,
 };
