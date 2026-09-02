@@ -1,4 +1,7 @@
-import { extractUrlSchema } from "../src/lib/extractArticle.functions";
+import {
+	extractUrlSchema,
+	__internal,
+} from "../src/lib/extractArticle.functions";
 
 const url = process.argv[2];
 
@@ -13,4 +16,10 @@ if (!parsed.success) {
 	process.exit(1);
 }
 
-console.log("URL is valid:", parsed.data);
+const fetched = await __internal.fetchHtml(parsed.data);
+if (!fetched.ok) {
+	console.error("Fetch failed:", fetched.error);
+	process.exit(1);
+}
+
+console.log("Fetched", fetched.html.length, "bytes from", fetched.finalUrl);

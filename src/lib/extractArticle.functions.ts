@@ -39,3 +39,46 @@ export const extractUrlSchema = z.string().refine((value) => {
 function domainFromUrl(url: string): string {
 	return new URL(url).hostname.replace(/^www\./, "");
 }
+
+interface FetchHtmlOk {
+	ok: true;
+	html: string;
+	finalUrl: string;
+}
+
+interface FetchHtmlError {
+	ok: false;
+	error: "fetch_failed" | "not_html";
+}
+
+async function fetchHtml(
+	url: string,
+): Promise<FetchHtmlOk | FetchHtmlError> {
+	let response: Response;
+	try {
+		response = await fetch(url, {
+			headers: {
+				"User-Agent":
+					"Mozilla/5.0 (compatible; TraceBot/0.1; +https://trace.example/bot)",
+			},
+			signal: AbortSignal.timeout(10_000),
+			redirect: "follow",
+		});
+	} catch {
+		return { ok: false, error: "fetch_failed" };
+	}
+
+	if (!response.ok) {
+		return { ok: false, error: "fetch_failed" };
+	}
+
+	const contentType = response.headers.get("content-type") ?? "";
+	if (!contentType.includes("text/html")) {
+		return { ok: false, error: "not_html" };
+	}
+
+	const html = await response.text();
+	return { ok: true, html, finalUrl: response.url || url };
+}
+
+export const __internal = { fetchHtml };
