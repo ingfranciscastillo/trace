@@ -39,7 +39,7 @@ function ArticleRow({
 }
 
 function HistoryPage() {
-	const { data: roots } = useSuspenseQuery(historyQueryOptions);
+	const { data: history } = useSuspenseQuery(historyQueryOptions);
 	const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
 	function toggle(id: number) {
@@ -50,6 +50,30 @@ function HistoryPage() {
 			return next;
 		});
 	}
+
+	if (!history.signedIn) {
+		return (
+			<div className="about-page">
+				<Nav />
+				<div className="about-stage">
+					<h1>History</h1>
+					<p className="about-section" style={{ color: "var(--text-muted)" }}>
+						History is only kept for signed-in accounts.{" "}
+						<Link to="/login" style={{ color: "var(--accent)" }}>
+							Sign in
+						</Link>{" "}
+						or{" "}
+						<Link to="/register" style={{ color: "var(--accent)" }}>
+							register
+						</Link>{" "}
+						to start saving one.
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	const roots = history.roots;
 
 	return (
 		<div className="about-page">

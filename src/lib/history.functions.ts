@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { desc } from "drizzle-orm";
+import { getRequestHeaders } from "@tanstack/react-start/server";
+import { eq, inArray } from "drizzle-orm";
+import { auth } from "@/lib/auth";
 import { db } from "../db";
-import { articles, claimSources, claims, relationships } from "../db/schema";
+import { articles, claimSources, claims, relationships, searches } from "../db/schema";
 
 interface ArticleRow {
 	id: number;
@@ -12,8 +14,25 @@ interface ArticleRow {
 	fetchedAt: string;
 }
 
+export type HistoryResult =
+	| { signedIn: false }
+	| { signedIn: true; roots: (ArticleRow & { related: ArticleRow[] })[] };
+
+// History is per-user and requires a session both to view and to have ever
+// been recorded — an anonymous trace is never written to `searches`, and an
+// anonymous request here gets nothing back regardless of what's in the DB.
 export const getHistory = createServerFn({ method: "POST" }).handler(
-	async () => {
+	async (): Promise<HistoryResult> => {
+		const session = await auth.api.getSession({ headers: getRequestHeaders() });
+		if (!session) return { signedIn: false };
+
+		const mySearches = await db
+			.select({ articleId: searches.articleId })
+			.from(searches)
+			.where(eq(searches.userId, session.user.id));
+		const myArticleIds = new Set(mySearches.map((s) => s.articleId));
+		if (myArticleIds.size === 0) return { signedIn: true, roots: [] };
+
 		const all = await db
 			.select({
 				id: articles.id,
@@ -25,7 +44,7 @@ export const getHistory = createServerFn({ method: "POST" }).handler(
 				depth: articles.depth,
 			})
 			.from(articles)
-			.orderBy(desc(articles.fetchedAt));
+			.where(inArray(articles.id, [...myArticleIds]));
 
 		const toRow = (a: (typeof all)[number]): ArticleRow => ({
 			id: a.id,
@@ -36,12 +55,14 @@ export const getHistory = createServerFn({ method: "POST" }).handler(
 			fetchedAt: a.fetchedAt.toISOString(),
 		});
 
-		const roots = all.filter((a) => a.depth === 0);
-		const nonRootById = new Map(
-			all.filter((a) => a.depth > 0).map((a) => [a.id, a]),
-		);
+		// "Root" here means a search this user directly ran, regardless of the
+		// article's global depth (chasing a source counts as a search too, just
+		// one without the fan-out that a depth-0 article normally gets).
+		const roots = all
+			.slice()
+			.sort((a, b) => b.fetchedAt.getTime() - a.fetchedAt.getTime());
 
-		if (roots.length === 0) return [];
+		if (roots.length === 0) return { signedIn: true, roots: [] };
 
 		const rels = await db
 			.select({
@@ -57,6 +78,7 @@ export const getHistory = createServerFn({ method: "POST" }).handler(
 			.from(claimSources);
 
 		const claimToArticle = new Map(claimRows.map((c) => [c.id, c.articleId]));
+		const allById = new Map(all.map((a) => [a.id, a]));
 
 		function relatedIdsFor(rootId: number): Set<number> {
 			const ids = new Set<number>();
@@ -70,17 +92,17 @@ export const getHistory = createServerFn({ method: "POST" }).handler(
 				}
 			}
 			ids.delete(rootId);
-			return ids;
+			// Only nest an article under a root that's also in the user's own
+			// searched set, so a sub-item is always something they can revisit.
+			return new Set([...ids].filter((id) => myArticleIds.has(id)));
 		}
 
-		return roots.map((root) => {
-			const relatedIds = [...relatedIdsFor(root.id)].filter((id) =>
-				nonRootById.has(id),
-			);
-			return {
+		return {
+			signedIn: true,
+			roots: roots.map((root) => ({
 				...toRow(root),
-				related: relatedIds.map((id) => toRow(nonRootById.get(id)!)),
-			};
-		});
+				related: [...relatedIdsFor(root.id)].map((id) => toRow(allById.get(id)!)),
+			})),
+		};
 	},
 );

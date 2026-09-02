@@ -8,6 +8,7 @@ import {
 	timestamp,
 	uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { user } from "./auth-schema";
 
 export const articles = pgTable("articles", {
 	id: serial().primaryKey(),
@@ -85,6 +86,25 @@ export const relationships = pgTable(
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 	},
 	(t) => [uniqueIndex("relationships_pair_type_idx").on(t.articleAId, t.articleBId, t.type)],
+);
+
+// One row per (user, article) they've traced. History is opt-in by nature of
+// requiring a session — an anonymous visitor's trace never gets recorded here,
+// and never shows up for anyone else. articleId points at the shared corpus;
+// this table only tracks who has personally looked at which of it.
+export const searches = pgTable(
+	"searches",
+	{
+		id: serial().primaryKey(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		articleId: integer("article_id")
+			.notNull()
+			.references(() => articles.id, { onDelete: "cascade" }),
+		searchedAt: timestamp("searched_at").defaultNow().notNull(),
+	},
+	(t) => [uniqueIndex("searches_user_article_idx").on(t.userId, t.articleId)],
 );
 
 // A candidate external source found via web search for a specific claim.

@@ -1,12 +1,30 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeaders } from "@tanstack/react-start/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
 import { db } from "../db";
-import { articles } from "../db/schema";
+import { articles, searches } from "../db/schema";
 import { saveArticle } from "./articleStore";
 import { extractArticleImpl, extractUrlSchema } from "./extractArticle.functions";
 import { isFirecrawlConfigured } from "./firecrawl";
 import { buildTraceGraph, type TraceGraph } from "./traceGraph";
+
+// Anonymous visitors can trace freely, but nothing is recorded for them —
+// History is opt-in by virtue of being signed in, both to view and to save.
+async function recordSearch(articleId: number): Promise<void> {
+	const headers = getRequestHeaders();
+	const session = await auth.api.getSession({ headers });
+	if (!session) return;
+
+	await db
+		.insert(searches)
+		.values({ userId: session.user.id, articleId })
+		.onConflictDoUpdate({
+			target: [searches.userId, searches.articleId],
+			set: { searchedAt: new Date() },
+		});
+}
 
 export type TraceResult =
 	| ({ ok: true } & TraceGraph)
@@ -51,6 +69,8 @@ async function getTraceImpl(
 		const saved = await saveArticle(extracted);
 		articleId = saved.articleId;
 	}
+
+	await recordSearch(articleId);
 
 	const graph = await buildTraceGraph(articleId);
 	return { ok: true, ...graph };

@@ -29,6 +29,7 @@
     "firecrawl:test:mock": "tsx scripts/test-firecrawl-mock.ts"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.7.2",
     "@fontsource-variable/dm-sans": "^5.3.0",
     "@fontsource/dm-mono": "^5.3.0",
     "@mozilla/readability": "^0.6.0",
