@@ -53,6 +53,13 @@ function getStats(
 	).length;
 
 	const base: Stat[] = [{ label: "CONNECTIONS", value: connections }];
+	if (node.divergenceStatus) {
+		base.push({
+			label: "VS. CLAIM",
+			value: node.divergenceStatus.toUpperCase().replace("_", " "),
+			accent: node.divergenceStatus === "number_mismatch" || node.divergenceStatus === "unsupported",
+		});
+	}
 
 	switch (node.type) {
 		case "ARTICLE":

@@ -7,6 +7,7 @@ import {
 	claimConfidence,
 	copiedFromConfidence,
 } from "./confidence";
+import { type DivergenceStatus, computeDivergence } from "./divergence";
 
 export type NodeType = "ARTICLE" | "AUTHOR" | "CLAIM" | "SOURCE" | "ORIGINAL";
 export type EdgeKind = "cites" | "authored_by" | "copied_from" | "first_seen_at";
@@ -20,6 +21,7 @@ export interface TraceNode {
 	excerpt?: string;
 	confidenceLevel?: ConfidenceLevel;
 	uncertaintyReasons?: string[];
+	divergenceStatus?: DivergenceStatus;
 	copiedBy?: number;
 	unverified?: boolean;
 	firstSeen?: boolean;
@@ -247,13 +249,19 @@ export async function buildTraceGraph(articleId: number): Promise<TraceGraph> {
 		ownSources.forEach((s, row) => {
 			const sourceNodeId = `csource-${s.id}`;
 			const resolved = s.articleId ? otherById.get(s.articleId) : undefined;
+			// Divergence needs the source's actual article text — a search-result
+			// snippet is too short/unreliable to compare a claim's wording against.
+			const divergence = resolved
+				? computeDivergence(claim.text, resolved.textContent)
+				: undefined;
 			nodes.push({
 				id: sourceNodeId,
 				type: resolved ? "ARTICLE" : "SOURCE",
 				title: resolved?.title ?? s.title,
 				domain: resolved?.domain ?? hostnameOf(s.url),
 				date: (resolved?.publishedAt ?? s.publishedAt) ?? undefined,
-				excerpt: s.description,
+				excerpt: resolved?.excerpt ?? s.description,
+				divergenceStatus: divergence?.status,
 				x,
 				y: claimRowY + ROW_HEIGHT * (row + 1),
 			});

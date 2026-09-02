@@ -19,6 +19,11 @@ export type SearchResult = SearchOk | SearchError;
 
 const BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search";
 
+// Brave wraps matched terms in <strong> tags within titles/descriptions.
+function stripHtml(text: string | undefined): string {
+	return (text ?? "").replace(/<\/?[a-z][^>]*>/gi, "").trim();
+}
+
 interface BraveWebResult {
 	title?: string;
 	url?: string;
@@ -70,9 +75,9 @@ export async function searchWeb(query: string, count = 5): Promise<SearchResult>
 	}
 
 	const results: WebSearchResult[] = (data.web?.results ?? []).map((r) => ({
-		title: r.title?.trim() ?? "",
+		title: stripHtml(r.title),
 		url: r.url ?? "",
-		description: r.description?.trim() ?? "",
+		description: stripHtml(r.description),
 		publishedAt: r.page_age ?? r.age ?? null,
 	}));
 
