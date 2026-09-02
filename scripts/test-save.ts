@@ -1,0 +1,48 @@
+import { eq } from "drizzle-orm";
+import { db } from "../src/db";
+import { articles, claims, links } from "../src/db/schema";
+import { extractArticleImpl } from "../src/lib/extractArticle.functions";
+import { saveArticle } from "../src/lib/articleStore";
+
+const url = process.argv[2];
+
+if (!url) {
+	console.error("Usage: tsx scripts/test-save.ts <url>");
+	process.exit(1);
+}
+
+const result = await extractArticleImpl(url);
+
+if (!result.ok) {
+	console.error("Extraction failed:", result.error);
+	process.exit(1);
+}
+
+const { articleId } = await saveArticle(result);
+console.log("Saved article id:", articleId);
+
+const [storedArticle] = await db
+	.select()
+	.from(articles)
+	.where(eq(articles.id, articleId));
+console.log("Stored article:", storedArticle);
+
+const storedClaims = await db
+	.select()
+	.from(claims)
+	.where(eq(claims.articleId, articleId));
+console.log("Stored claims:", storedClaims.length);
+
+const storedLinks = await db
+	.select()
+	.from(links)
+	.where(eq(links.articleId, articleId));
+console.log(
+	"Stored links:",
+	storedLinks.length,
+	"(citations:",
+	storedLinks.filter((l) => l.isCitation).length,
+	")",
+);
+
+process.exit(0);

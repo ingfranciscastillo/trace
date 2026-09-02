@@ -21,6 +21,7 @@ export interface ExtractOk {
 	author: string | null;
 	publishedAt: string | null;
 	excerpt: string;
+	textContent: string;
 	textLength: number;
 	links: ExtractLink[];
 	claims: Claim[];
@@ -319,6 +320,7 @@ export async function extractArticleImpl(
 		author: article.author,
 		publishedAt: article.publishedAt,
 		excerpt: article.textContent.slice(0, 500),
+		textContent: article.textContent,
 		textLength: article.textContent.length,
 		links: linksWithCitations,
 		claims,
