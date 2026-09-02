@@ -67,7 +67,13 @@ export function GraphCanvas({
 			const sy = from.offsetTop + from.offsetHeight;
 			const tx = to.offsetLeft + to.offsetWidth / 2;
 			const ty = to.offsetTop;
-			const midY = (sy + ty) / 2;
+			// Jog just below the source instead of at the sy/ty midpoint: an edge
+			// that skips over an intervening row (e.g. article -> claim, past the
+			// neighbor-sources row) would otherwise bend its horizontal segment
+			// right through that row's cards.
+			const gap = ty - sy;
+			const jog = Math.min(28, Math.max(8, gap * 0.25));
+			const midY = sy + jog;
 
 			next.push({
 				id: e.id,
@@ -124,12 +130,23 @@ export function GraphCanvas({
 	function onPointerUp() {
 		drag.current = null;
 	}
-	function onWheel(ev: React.WheelEvent) {
-		if (!interactive) return;
-		ev.preventDefault();
-		const next = clampScale(transform.scale - ev.deltaY * 0.001);
-		set({ scale: next });
-	}
+	// React's synthetic onWheel is attached as a passive listener, so
+	// preventDefault() there can't stop the page from scrolling. A native
+	// listener with { passive: false } is the only way to actually block it.
+	useEffect(() => {
+		const el = containerRef.current;
+		if (!el) return;
+
+		function onWheel(ev: WheelEvent) {
+			if (!interactive) return;
+			ev.preventDefault();
+			const next = clampScale(transform.scale - ev.deltaY * 0.001);
+			set({ scale: next });
+		}
+
+		el.addEventListener("wheel", onWheel, { passive: false });
+		return () => el.removeEventListener("wheel", onWheel);
+	});
 	function onNodeDoubleClick(n: TraceNode) {
 		if (!interactive || !containerRef.current) return;
 		const rect = containerRef.current.getBoundingClientRect();
@@ -149,7 +166,6 @@ export function GraphCanvas({
 			onPointerMove={onPointerMove}
 			onPointerUp={onPointerUp}
 			onPointerLeave={onPointerUp}
-			onWheel={onWheel}
 		>
 			<div
 				className="graph__viewport"
