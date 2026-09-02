@@ -30,6 +30,15 @@ export const claims = pgTable("claims", {
 	text: text().notNull(),
 	paragraphIndex: integer("paragraph_index").notNull(),
 	signals: text().array().notNull(),
+	// "no_matches": unique to this article, nothing to compare against.
+	// "unverified": matching claims exist elsewhere but none have a usable date.
+	// "first_found": earliest dated occurrence among corpus matches — never "confirmed
+	// origin", since an earlier undiscovered source can always exist outside the corpus.
+	firstSeenArticleId: integer("first_seen_article_id").references(
+		() => articles.id,
+		{ onDelete: "set null" },
+	),
+	firstSeenStatus: text("first_seen_status"),
 });
 
 export const links = pgTable("links", {

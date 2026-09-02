@@ -32,6 +32,14 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
 	return union === 0 ? 0 : intersection / union;
 }
 
+export function sentenceSimilarity(a: string, b: string): number {
+	const normalizedA = normalize(a);
+	const normalizedB = normalize(b);
+	if (normalizedA.length === 0 || normalizedB.length === 0) return 0;
+	if (normalizedA === normalizedB) return 1;
+	return jaccardSimilarity(wordSet(normalizedA), wordSet(normalizedB));
+}
+
 export function compareArticleText(
 	textA: string,
 	textB: string,

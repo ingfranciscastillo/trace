@@ -18,9 +18,11 @@ if (!result.ok) {
 	process.exit(1);
 }
 
-const { articleId, relationships: relCounts } = await saveArticle(result);
+const { articleId, relationships: relCounts, firstSeenUpdated } =
+	await saveArticle(result);
 console.log("Saved article id:", articleId);
 console.log("Relationships built:", relCounts);
+console.log("First-seen claims updated (this + affected articles):", firstSeenUpdated);
 
 const [storedArticle] = await db
 	.select()
@@ -33,6 +35,16 @@ const storedClaims = await db
 	.from(claims)
 	.where(eq(claims.articleId, articleId));
 console.log("Stored claims:", storedClaims.length);
+for (const claim of storedClaims) {
+	console.log(
+		" ",
+		`[${claim.firstSeenStatus ?? "?"}]`,
+		"firstSeenArticleId:",
+		claim.firstSeenArticleId,
+		"-",
+		claim.text.slice(0, 80),
+	);
+}
 
 const storedLinks = await db
 	.select()

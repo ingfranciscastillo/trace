@@ -3,10 +3,15 @@ import { db } from "../db";
 import { articles, claims, links } from "../db/schema";
 import type { ExtractOk } from "./extractArticle.functions";
 import { buildRelationships, type RelationshipCounts } from "./relationshipStore";
+import { buildFirstSeen } from "./firstSeenStore";
 
 export async function saveArticle(
 	result: ExtractOk,
-): Promise<{ articleId: number; relationships: RelationshipCounts }> {
+): Promise<{
+	articleId: number;
+	relationships: RelationshipCounts;
+	firstSeenUpdated: number;
+}> {
 	const { articleId } = await db.transaction(async (tx) => {
 		const [savedArticle] = await tx
 			.insert(articles)
@@ -67,5 +72,6 @@ export async function saveArticle(
 	});
 
 	const relationshipCounts = await buildRelationships(articleId, result.url);
-	return { articleId, relationships: relationshipCounts };
+	const firstSeenUpdated = await buildFirstSeen(articleId);
+	return { articleId, relationships: relationshipCounts, firstSeenUpdated };
 }
