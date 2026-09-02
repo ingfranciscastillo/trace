@@ -3,6 +3,11 @@ import { db } from "../src/db";
 import { articles, claims, links, relationships } from "../src/db/schema";
 import { extractArticleImpl } from "../src/lib/extractArticle.functions";
 import { saveArticle } from "../src/lib/articleStore";
+import {
+	citesConfidence,
+	claimConfidence,
+	copiedFromConfidence,
+} from "../src/lib/confidence";
 
 const url = process.argv[2];
 
@@ -36,11 +41,11 @@ const storedClaims = await db
 	.where(eq(claims.articleId, articleId));
 console.log("Stored claims:", storedClaims.length);
 for (const claim of storedClaims) {
+	const confidence = claimConfidence(claim.signals, claim.firstSeenStatus);
 	console.log(
 		" ",
-		`[${claim.firstSeenStatus ?? "?"}]`,
-		"firstSeenArticleId:",
-		claim.firstSeenArticleId,
+		`[${confidence.level}${confidence.reasons.length ? " " + confidence.reasons.join(",") : ""}]`,
+		`(${claim.firstSeenStatus ?? "?"})`,
 		"-",
 		claim.text.slice(0, 80),
 	);
@@ -69,7 +74,23 @@ const storedRelationships = await db
 	);
 console.log("Stored relationships:", storedRelationships.length);
 for (const rel of storedRelationships) {
-	console.log(" ", rel.type, rel.articleAId, "->", rel.articleBId, rel.evidence);
+	const evidence = rel.evidence as Record<string, unknown>;
+	const confidence =
+		rel.type === "cites"
+			? citesConfidence(Boolean(evidence.isCitation))
+			: copiedFromConfidence(
+					Number(evidence.sharedSentenceCount ?? 0),
+					rel.olderArticleId,
+				);
+	console.log(
+		" ",
+		rel.type,
+		rel.articleAId,
+		"->",
+		rel.articleBId,
+		`[${confidence.level}${confidence.reasons.length ? " " + confidence.reasons.join(",") : ""}]`,
+		evidence,
+	);
 }
 
 process.exit(0);
