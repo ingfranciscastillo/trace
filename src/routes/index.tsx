@@ -32,7 +32,7 @@ const DEMO_NODES: TraceNode[] = [
 		type: "CLAIM",
 		title: "The claim it makes",
 		domain: "excerpt",
-		confidence: 74,
+		confidenceLevel: "medium",
 		x: 140,
 		y: 120,
 	},
@@ -68,7 +68,7 @@ const DEMO_EDGES: TraceEdge[] = [
 	{ id: "d-e2", from: "d-article", to: "d-claim", kind: "cites" },
 	{ id: "d-e3", from: "d-claim", to: "d-source", kind: "cites" },
 	{ id: "d-e4", from: "d-claim", to: "d-copies", kind: "copied_from" },
-	{ id: "d-e5", from: "d-source", to: "d-original", kind: "derived_from" },
+	{ id: "d-e5", from: "d-source", to: "d-original", kind: "first_seen_at" },
 ];
 
 function LandingPage() {

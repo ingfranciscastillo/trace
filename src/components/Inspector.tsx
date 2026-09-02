@@ -1,4 +1,4 @@
-import type { TraceEdge, TraceNode, TraceResult } from "../lib/traceData";
+import type { TraceEdge, TraceGraph, TraceNode } from "../lib/traceGraph";
 
 interface Stat {
 	label: string;
@@ -32,14 +32,27 @@ function buildChain(
 	return chain;
 }
 
+function confidenceLabel(node: TraceNode): string {
+	if (!node.confidenceLevel) return "—";
+	const reasons = node.uncertaintyReasons?.length
+		? ` (${node.uncertaintyReasons.join(", ")})`
+		: "";
+	return `${node.confidenceLevel.toUpperCase()}${reasons}`;
+}
+
 function getStats(
 	node: TraceNode,
-	trace: TraceResult,
+	trace: TraceGraph,
 	edges: TraceEdge[],
 ): Stat[] {
+	const connections = edges.filter(
+		(e) => e.from === node.id || e.to === node.id,
+	).length;
 	const citedBy = edges.filter(
 		(e) => e.to === node.id && e.kind === "copied_from",
 	).length;
+
+	const base: Stat[] = [{ label: "CONNECTIONS", value: connections }];
 
 	switch (node.type) {
 		case "ARTICLE":
@@ -48,37 +61,30 @@ function getStats(
 				{ label: "CLAIMS", value: trace.stats.claims },
 				{ label: "UNVERIFIED", value: trace.stats.unverified },
 				{ label: "FIRST SEEN", value: trace.stats.firstSeen },
+				...base,
 			];
 		case "CLAIM":
 			return [
 				{
 					label: "CONFIDENCE",
-					value: node.confidence ? `${node.confidence}%` : "—",
-					accent: !node.unverified,
+					value: confidenceLabel(node),
+					accent: node.confidenceLevel !== "unverified",
 				},
-				{
-					label: "COPIED BY",
-					value: `${citedBy || node.copiedBy || 0} domains`,
-				},
-				{ label: "FIRST SEEN", value: trace.stats.firstSeen },
+				{ label: "COPIED BY", value: `${citedBy || node.copiedBy || 0} domains` },
+				...base,
 			];
 		case "SOURCE":
-		case "DATA":
 			return [
 				{ label: "CITED BY", value: `${node.copiedBy ?? citedBy} articles` },
-				{ label: "FIRST SEEN", value: trace.stats.firstSeen },
+				...base,
 			];
 		case "ORIGINAL":
 			return [
-				{
-					label: "FIRST SEEN",
-					value: node.date ?? trace.stats.firstSeen,
-					accent: true,
-				},
-				{ label: "REFERENCED BY", value: trace.timeline.length - 1 },
+				{ label: "FIRST SEEN", value: node.date ?? trace.stats.firstSeen, accent: true },
+				...base,
 			];
 		default:
-			return [];
+			return base;
 	}
 }
 
@@ -87,7 +93,7 @@ export function Inspector({
 	trace,
 }: {
 	node: TraceNode | null;
-	trace: TraceResult;
+	trace: TraceGraph;
 }) {
 	if (!node) {
 		return (
@@ -111,10 +117,14 @@ export function Inspector({
 					{node.domain}
 					{node.date ? ` · ${node.date}` : ""}
 				</div>
+				{node.excerpt && node.excerpt !== node.title && (
+					<p className="inspector__excerpt">{node.excerpt}</p>
+				)}
 				{node.unverified && (
 					<p className="inspector__excerpt">
-						This claim does not link to any verifiable source. Trace found no
-						public origin for it.
+						This claim has no attached citation, no attribution, and no
+						corroborating occurrence elsewhere in the corpus — información sin
+						fuente.
 					</p>
 				)}
 			</div>

@@ -15,6 +15,14 @@ const searchSchema = z.object({
 	url: z.string().catch(""),
 });
 
+const ERROR_MESSAGES: Record<string, string> = {
+	invalid_url: "That doesn't look like a valid, reachable http(s) URL.",
+	fetch_failed: "Could not fetch that page — it may be down or blocking requests.",
+	not_html: "That URL didn't return an HTML page.",
+	no_article_content: "No article content could be extracted from that page.",
+	blocked: "That URL points to an internal or disallowed address.",
+};
+
 export const Route = createFileRoute("/trace")({
 	validateSearch: (search) => searchSchema.parse(search),
 	loaderDeps: ({ search }) => ({ url: search.url }),
@@ -47,6 +55,20 @@ function TraceWorkspace() {
 		scale: 1,
 	});
 
+	if (!trace.ok) {
+		return (
+			<div className="workspace">
+				<Nav />
+				<div className="error-state">
+					{ERROR_MESSAGES[trace.error] ?? trace.error}
+					<button type="button" className="btn" onClick={() => navigate({ to: "/" })}>
+						BACK
+					</button>
+				</div>
+			</div>
+		);
+	}
+
 	const selectedNode = trace.nodes.find((n) => n.id === selectedId) ?? null;
 
 	function resetView() {
@@ -64,7 +86,7 @@ function TraceWorkspace() {
 				<div className="workspace__title">
 					<h1>{trace.title}</h1>
 					<span>
-						{trace.domain} · {trace.publishedAt}
+						{trace.domain} · {trace.publishedAt ?? "date unknown"}
 					</span>
 				</div>
 				<div className="workspace__toolbar">

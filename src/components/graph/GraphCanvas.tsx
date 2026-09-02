@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { TraceEdge, TraceNode } from "../../lib/traceData";
+import type { TraceEdge, TraceNode } from "../../lib/traceGraph";
 
 export interface GraphTransform {
 	x: number;
@@ -24,6 +24,7 @@ interface EdgePath {
 	from: string;
 	to: string;
 	copied: boolean;
+	weak: boolean;
 }
 
 export function clampScale(s: number) {
@@ -73,6 +74,7 @@ export function GraphCanvas({
 				from: e.from,
 				to: e.to,
 				copied: e.kind === "copied_from",
+				weak: e.confidenceLevel === "low" || e.confidenceLevel === "unverified",
 				d: `M ${sx} ${sy} L ${sx} ${midY} L ${tx} ${midY} L ${tx} ${ty}`,
 			});
 		}
@@ -167,6 +169,7 @@ export function GraphCanvas({
 						const dim = !!selectedId && !active;
 						const cls = ["edge"];
 						if (p.copied) cls.push("edge--copied");
+						if (p.weak) cls.push("edge--weak");
 						if (active) cls.push("edge--active");
 						if (dim) cls.push("edge--dim");
 						if (animated) cls.push("edge--enter");
