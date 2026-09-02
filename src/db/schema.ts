@@ -7,12 +7,6 @@ import {
 	timestamp,
 } from "drizzle-orm/pg-core";
 
-export const todos = pgTable("todos", {
-	id: serial().primaryKey(),
-	title: text().notNull(),
-	createdAt: timestamp("created_at").defaultNow(),
-});
-
 export const articles = pgTable("articles", {
 	id: serial().primaryKey(),
 	url: text().notNull().unique(),
