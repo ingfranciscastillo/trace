@@ -23,7 +23,8 @@
     "extract:compare": "tsx scripts/test-compare.ts",
     "search:test": "tsx scripts/test-search.ts",
     "search:test:mock": "tsx scripts/test-search-mock.ts",
-    "confidence:test": "tsx scripts/test-confidence.ts"
+    "confidence:test": "tsx scripts/test-confidence.ts",
+    "chain:test": "tsx scripts/test-chain.ts"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",

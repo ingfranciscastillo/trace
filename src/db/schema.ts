@@ -20,26 +20,36 @@ export const articles = pgTable("articles", {
 	textContent: text("text_content").notNull(),
 	textLength: integer("text_length").notNull(),
 	fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+	// 0 = submitted directly by a user. N+1 = discovered while chasing a source
+	// N hops away. Caps how far automatic source-chasing is allowed to go.
+	depth: integer().notNull().default(0),
 });
 
-export const claims = pgTable("claims", {
-	id: serial().primaryKey(),
-	articleId: integer("article_id")
-		.notNull()
-		.references(() => articles.id, { onDelete: "cascade" }),
-	text: text().notNull(),
-	paragraphIndex: integer("paragraph_index").notNull(),
-	signals: text().array().notNull(),
-	// "no_matches": unique to this article, nothing to compare against.
-	// "unverified": matching claims exist elsewhere but none have a usable date.
-	// "first_found": earliest dated occurrence among corpus matches — never "confirmed
-	// origin", since an earlier undiscovered source can always exist outside the corpus.
-	firstSeenArticleId: integer("first_seen_article_id").references(
-		() => articles.id,
-		{ onDelete: "set null" },
-	),
-	firstSeenStatus: text("first_seen_status"),
-});
+// Unique on (articleId, text) so re-saving an article can upsert claims in place
+// instead of deleting and reinserting — a claim's id must survive re-extraction,
+// since other rows (claim_sources) reference it by id.
+export const claims = pgTable(
+	"claims",
+	{
+		id: serial().primaryKey(),
+		articleId: integer("article_id")
+			.notNull()
+			.references(() => articles.id, { onDelete: "cascade" }),
+		text: text().notNull(),
+		paragraphIndex: integer("paragraph_index").notNull(),
+		signals: text().array().notNull(),
+		// "no_matches": unique to this article, nothing to compare against.
+		// "unverified": matching claims exist elsewhere but none have a usable date.
+		// "first_found": earliest dated occurrence among corpus matches — never "confirmed
+		// origin", since an earlier undiscovered source can always exist outside the corpus.
+		firstSeenArticleId: integer("first_seen_article_id").references(
+			() => articles.id,
+			{ onDelete: "set null" },
+		),
+		firstSeenStatus: text("first_seen_status"),
+	},
+	(t) => [uniqueIndex("claims_article_text_idx").on(t.articleId, t.text)],
+);
 
 export const links = pgTable("links", {
 	id: serial().primaryKey(),
@@ -75,4 +85,26 @@ export const relationships = pgTable(
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 	},
 	(t) => [uniqueIndex("relationships_pair_type_idx").on(t.articleAId, t.articleBId, t.type)],
+);
+
+// A candidate external source found via web search for a specific claim.
+// articleId stays null until resolveClaimSource actually extracts and saves it
+// into the corpus (or links it to an existing article at the same URL).
+export const claimSources = pgTable(
+	"claim_sources",
+	{
+		id: serial().primaryKey(),
+		claimId: integer("claim_id")
+			.notNull()
+			.references(() => claims.id, { onDelete: "cascade" }),
+		url: text().notNull(),
+		title: text().notNull(),
+		description: text().notNull(),
+		publishedAt: text("published_at"),
+		articleId: integer("article_id").references(() => articles.id, {
+			onDelete: "set null",
+		}),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(t) => [uniqueIndex("claim_sources_claim_url_idx").on(t.claimId, t.url)],
 );

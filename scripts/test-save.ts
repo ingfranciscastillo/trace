@@ -93,4 +93,4 @@ for (const rel of storedRelationships) {
 	);
 }
 
-process.exit(0);
+await db.$client.end();

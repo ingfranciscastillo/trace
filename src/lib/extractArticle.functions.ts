@@ -146,6 +146,7 @@ async function fetchHtml(
 
 		if (response.status >= 300 && response.status < 400) {
 			const location = response.headers.get("location");
+			await response.body?.cancel();
 			if (!location) {
 				return { ok: false, error: "fetch_failed" };
 			}
@@ -154,11 +155,13 @@ async function fetchHtml(
 		}
 
 		if (!response.ok) {
+			await response.body?.cancel();
 			return { ok: false, error: "fetch_failed" };
 		}
 
 		const contentType = response.headers.get("content-type") ?? "";
 		if (!contentType.includes("text/html")) {
+			await response.body?.cancel();
 			return { ok: false, error: "not_html" };
 		}
 
