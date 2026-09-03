@@ -55,11 +55,12 @@ export const getHistory = createServerFn({ method: "POST" }).handler(
 			fetchedAt: a.fetchedAt.toISOString(),
 		});
 
-		// "Root" here means a search this user directly ran, regardless of the
-		// article's global depth (chasing a source counts as a search too, just
-		// one without the fan-out that a depth-0 article normally gets).
+		// Only a URL the user pasted directly (depth 0) is a top-level root.
+		// Anything they reached by chasing a source (depth > 0 — findSources,
+		// resolveSource, or "REVIEW THIS ARTICLE") nests under whichever root(s)
+		// it's related to instead, even though it's technically its own search too.
 		const roots = all
-			.slice()
+			.filter((a) => a.depth === 0)
 			.sort((a, b) => b.fetchedAt.getTime() - a.fetchedAt.getTime());
 
 		if (roots.length === 0) return { signedIn: true, roots: [] };
@@ -92,9 +93,14 @@ export const getHistory = createServerFn({ method: "POST" }).handler(
 				}
 			}
 			ids.delete(rootId);
-			// Only nest an article under a root that's also in the user's own
-			// searched set, so a sub-item is always something they can revisit.
-			return new Set([...ids].filter((id) => myArticleIds.has(id)));
+			// Only nest an article that's (a) in the user's own searched set, so a
+			// sub-item is always something they can revisit, and (b) not itself a
+			// depth-0 root — otherwise two roots that happen to cite each other
+			// would each list the other as "related", duplicating both at the top
+			// level and nested underneath it.
+			return new Set(
+				[...ids].filter((id) => myArticleIds.has(id) && allById.get(id)?.depth !== 0),
+			);
 		}
 
 		return {
