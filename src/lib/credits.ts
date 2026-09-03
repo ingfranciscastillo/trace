@@ -2,17 +2,19 @@ import type { WebhookPayload } from "@dodopayments/core";
 import { eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { creditBalances, creditTransactions } from "../db/schema";
+import { CREDIT_PACKS, dodoProductIdEnvVar } from "./creditPacks";
 
 export type CreditReason = "purchase" | "brave_search" | "firecrawl";
 
 // 1 credit = 1 Brave search = 1 Firecrawl page, unified — at the real rates
 // ($5/1000 Brave, ~$0.005/page Firecrawl overage) they cost us the same.
 // Maps a Dodo product id to how many credits a purchase of it grants.
-const CREDIT_PACKS: Record<string, number> = {
-	...(process.env.DODO_CREDITS_PACK_PRODUCT_ID
-		? { [process.env.DODO_CREDITS_PACK_PRODUCT_ID]: 50 }
-		: {}),
-};
+const CREDITS_BY_PRODUCT_ID: Record<string, number> = Object.fromEntries(
+	CREDIT_PACKS.flatMap((pack) => {
+		const productId = process.env[dodoProductIdEnvVar(pack.slug)];
+		return productId ? [[productId, pack.credits]] : [];
+	}),
+);
 
 export async function getCreditBalance(userId: string): Promise<number> {
 	const [row] = await db
@@ -93,7 +95,7 @@ export async function onCreditPurchase(payload: WebhookPayload): Promise<void> {
 
 	let totalCredits = 0;
 	for (const item of data.product_cart ?? []) {
-		const perUnit = CREDIT_PACKS[item.product_id];
+		const perUnit = CREDITS_BY_PRODUCT_ID[item.product_id];
 		if (perUnit) totalCredits += perUnit * item.quantity;
 	}
 

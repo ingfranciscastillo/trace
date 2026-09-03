@@ -6,6 +6,7 @@ import DodoPayments from 'dodopayments'
 import { db } from '../db'
 import * as authSchema from '../db/auth-schema'
 import { onCreditPurchase } from './credits'
+import { CREDIT_PACKS, dodoProductIdEnvVar } from './creditPacks'
 
 // Constructing the DodoPayments client throws synchronously if no API key is
 // set — and auth.ts is loaded eagerly by everything (login, every trace via
@@ -24,12 +25,14 @@ const dodoPaymentsPlugin = dodoApiKey
       }),
       use: [
         checkout({
-          products: [
-            // Configured in the Dodo dashboard as a one-time-purchase product;
-            // DODO_CREDITS_PACK_PRODUCT_ID must point at its real product id.
-            { productId: process.env.DODO_CREDITS_PACK_PRODUCT_ID ?? '', slug: 'credits-5' },
-          ],
-          successUrl: process.env.DODO_CHECKOUT_SUCCESS_URL ?? '/',
+          // Each pack is its own one-time-purchase product in the Dodo
+          // dashboard; DODO_PRODUCT_ID_CREDITS_5 / _15 / _40 / _100 must
+          // point at their real product ids.
+          products: CREDIT_PACKS.map((pack) => ({
+            productId: process.env[dodoProductIdEnvVar(pack.slug)] ?? '',
+            slug: pack.slug,
+          })),
+          successUrl: process.env.DODO_CHECKOUT_SUCCESS_URL ?? '/credits',
           authenticatedUsersOnly: true,
         }),
         portal(),
