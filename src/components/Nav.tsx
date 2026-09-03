@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { CreditsBadge } from "./CreditsBadge";
 import { authClient } from "../lib/auth-client";
 
 export function Nav() {
@@ -13,6 +14,7 @@ export function Nav() {
 				<Link to="/">ANALYZE</Link>
 				<Link to="/history">HISTORY</Link>
 				<Link to="/about">ABOUT</Link>
+				{!isPending && session?.user && <CreditsBadge />}
 				{!isPending &&
 					(session?.user ? (
 						<a

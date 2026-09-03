@@ -131,6 +131,36 @@ export const usageCounters = pgTable(
 	],
 );
 
+// Current spendable balance per user. Maintained alongside creditTransactions
+// (not derived by summing it on read) so a spend can be a single row-locked
+// read-check-decrement — summing an append-only ledger under concurrent
+// spends would race and could let the balance go negative.
+export const creditBalances = pgTable("credit_balances", {
+	userId: text("user_id")
+		.primaryKey()
+		.references(() => user.id, { onDelete: "cascade" }),
+	balance: integer().notNull().default(0),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Append-only audit log: positive amount = purchase, -1 = one spend. Purchases
+// carry the Dodo payment id so a retried webhook can't double-credit — the
+// unique index makes a duplicate insert a no-op instead of a second credit.
+export const creditTransactions = pgTable(
+	"credit_transactions",
+	{
+		id: serial().primaryKey(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		amount: integer().notNull(),
+		reason: text().notNull(),
+		dodoPaymentId: text("dodo_payment_id"),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(t) => [uniqueIndex("credit_transactions_dodo_payment_idx").on(t.dodoPaymentId)],
+);
+
 // A candidate external source found via web search for a specific claim.
 // articleId stays null until resolveClaimSource actually extracts and saves it
 // into the corpus (or links it to an existing article at the same URL).

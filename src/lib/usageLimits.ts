@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "../db";
 import { usageCounters } from "../db/schema";
+import { consumeCredit } from "./credits";
 import { isFirecrawlConfigured } from "./firecrawl";
 
 export type LimitedResource = "brave_search" | "firecrawl";
@@ -65,16 +66,20 @@ export async function checkAndConsume(
 }
 
 // Brave Search quota check for one findSources call. Consumes on success —
-// call this once, right before actually spending the request.
+// call this once, right before actually spending the request. Free monthly
+// quota first; once that's used up, spend a purchased credit if the account
+// has one.
 export async function consumeBraveSearchQuota(headers: Headers): Promise<boolean> {
 	const session = await auth.api.getSession({ headers });
 	if (session) {
-		return checkAndConsume(
+		const freeOk = await checkAndConsume(
 			`user:${session.user.id}`,
 			"brave_search",
 			FREE_BRAVE_SEARCHES_PER_MONTH,
 			utcMonthStart(),
 		);
+		if (freeOk) return true;
+		return consumeCredit(session.user.id, "brave_search");
 	}
 	return checkAndConsume(
 		`ip:${getClientIp(headers)}`,
@@ -87,14 +92,18 @@ export async function consumeBraveSearchQuota(headers: Headers): Promise<boolean
 // Whether this specific request is allowed to spend a real Firecrawl call.
 // Requires an actual session server-side — a request forged without going
 // through the UI toggle can't get past this just by setting useFirecrawl.
+// Same free-then-credit order as Brave.
 export async function canUseFirecrawl(headers: Headers): Promise<boolean> {
 	if (!isFirecrawlConfigured()) return false;
 	const session = await auth.api.getSession({ headers });
 	if (!session) return false;
-	return checkAndConsume(
+
+	const freeOk = await checkAndConsume(
 		`user:${session.user.id}`,
 		"firecrawl",
 		FREE_FIRECRAWL_PER_MONTH,
 		utcMonthStart(),
 	);
+	if (freeOk) return true;
+	return consumeCredit(session.user.id, "firecrawl");
 }
