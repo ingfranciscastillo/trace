@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/logo.svg" alt="Trace" width="220">
+  <img src="public/logo-square-dark-bg.svg" alt="Trace" width="220">
 </p>
 
 <p align="center"><b>Follow information back to where it began.</b></p>
