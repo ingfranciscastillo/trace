@@ -50,10 +50,26 @@ export async function saveArticle(
 		// Upsert-in-place (not delete+reinsert) so a claim's id survives re-extraction —
 		// claim_sources references claims by id, and would cascade-delete otherwise.
 		if (result.claims.length > 0) {
+			// The same sentence can appear verbatim in more than one paragraph
+			// (a repeated stat, a pull-quote). Since the conflict target is
+			// (articleId, text), two such rows in one INSERT would make Postgres
+			// try to update the same conflicting row twice and error out — dedupe
+			// first, merging signals from every occurrence.
+			const dedupedClaims = new Map<string, (typeof result.claims)[number]>();
+			for (const claim of result.claims) {
+				const existing = dedupedClaims.get(claim.text);
+				dedupedClaims.set(claim.text, {
+					...(existing ?? claim),
+					signals: existing
+						? Array.from(new Set([...existing.signals, ...claim.signals]))
+						: claim.signals,
+				});
+			}
+
 			await tx
 				.insert(claims)
 				.values(
-					result.claims.map((claim) => ({
+					Array.from(dedupedClaims.values()).map((claim) => ({
 						articleId,
 						text: claim.text,
 						paragraphIndex: claim.paragraphIndex,
