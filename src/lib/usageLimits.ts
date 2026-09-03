@@ -22,6 +22,10 @@ export function utcMonthStart(d = new Date()): Date {
 	return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
 
+export function utcNextMonthStart(d = new Date()): Date {
+	return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+}
+
 export function getClientIp(headers: Headers): string {
 	const forwarded = headers.get("x-forwarded-for");
 	if (forwarded) return forwarded.split(",")[0]!.trim();
@@ -87,6 +91,32 @@ export async function consumeBraveSearchQuota(headers: Headers): Promise<boolean
 		ANONYMOUS_BRAVE_SEARCHES_PER_DAY,
 		utcDayStart(),
 	);
+}
+
+export interface FreeQuotaStatus {
+	braveUsed: number;
+	braveLimit: number;
+	firecrawlUsed: number;
+	firecrawlLimit: number;
+	resetsAt: Date;
+}
+
+// Read-only view of this month's free-tier usage — never consumes, just
+// reports where the counters currently stand, for display in the UI.
+export async function getFreeQuotaStatus(userId: string): Promise<FreeQuotaStatus> {
+	const periodStart = utcMonthStart();
+	const rows = await db
+		.select()
+		.from(usageCounters)
+		.where(and(eq(usageCounters.subject, `user:${userId}`), eq(usageCounters.periodStart, periodStart)));
+
+	return {
+		braveUsed: rows.find((r) => r.resource === "brave_search")?.count ?? 0,
+		braveLimit: FREE_BRAVE_SEARCHES_PER_MONTH,
+		firecrawlUsed: rows.find((r) => r.resource === "firecrawl")?.count ?? 0,
+		firecrawlLimit: FREE_FIRECRAWL_PER_MONTH,
+		resetsAt: utcNextMonthStart(),
+	};
 }
 
 // Whether this specific request is allowed to spend a real Firecrawl call.

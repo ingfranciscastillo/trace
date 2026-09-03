@@ -10,6 +10,14 @@ export const Route = createFileRoute("/credits")({
 	component: CreditsPage,
 });
 
+function formatResetDate(iso: string): string {
+	return new Date(iso).toLocaleDateString("en-US", {
+		month: "long",
+		day: "numeric",
+		timeZone: "UTC",
+	});
+}
+
 function CreditsPage() {
 	const { data } = useQuery({
 		queryKey: ["my-credits"],
@@ -43,6 +51,43 @@ function CreditsPage() {
 					Buy once, spend whenever you need extra source searches or fetches.
 					No subscription, nothing expires.
 				</p>
+
+				{data?.signedIn && (
+					<div className="credits-quota">
+						<div className="credits-quota__title">FREE THIS MONTH</div>
+						<div className="credits-quota__row">
+							<span>Source searches</span>
+							<span className="mono">
+								{data.quota.braveUsed} / {data.quota.braveLimit}
+							</span>
+						</div>
+						<div className="credits-quota__bar">
+							<div
+								className="credits-quota__bar-fill"
+								style={{
+									width: `${Math.min(100, (data.quota.braveUsed / data.quota.braveLimit) * 100)}%`,
+								}}
+							/>
+						</div>
+						<div className="credits-quota__row">
+							<span>Firecrawl fetches</span>
+							<span className="mono">
+								{data.quota.firecrawlUsed} / {data.quota.firecrawlLimit}
+							</span>
+						</div>
+						<div className="credits-quota__bar">
+							<div
+								className="credits-quota__bar-fill"
+								style={{
+									width: `${Math.min(100, (data.quota.firecrawlUsed / data.quota.firecrawlLimit) * 100)}%`,
+								}}
+							/>
+						</div>
+						<div className="credits-quota__reset">
+							Resets {formatResetDate(data.quota.resetsAt)}
+						</div>
+					</div>
+				)}
 
 				{data?.signedIn && (
 					<div className="credits-balance">
