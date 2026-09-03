@@ -525,6 +525,56 @@ a { color: inherit; text-decoration: none; }
     radial-gradient(circle at 1px 1px, var(--border-soft) 1px, transparent 0) 0 0/24px 24px;
 }
 
+.features {
+  margin-top: 56px;
+  padding: 0 32px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+}
+.feature__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.feature p {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.contact-section {
+  margin: 0 32px 72px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border-soft);
+  max-width: 640px;
+}
+.contact-section__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.contact-section p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.contact-section p + p { margin-top: 8px; }
+.contact-section__github {
+  display: inline-flex;
+  margin-top: 14px;
+  color: var(--accent);
+  transition: opacity .15s ease;
+}
+.contact-section__github svg { width: 20px; height: 20px; }
+.contact-section__github:hover { opacity: .7; }
+.contact-section a { color: var(--accent); }
+.contact-section a:hover { text-decoration: underline; }
+
 /* ---------- workspace ---------- */
 .workspace { min-height: 100%; display: flex; flex-direction: column; }
 .workspace__header {
@@ -906,6 +956,7 @@ a { color: inherit; text-decoration: none; }
   .hero__meta { justify-self: start; text-align: left; }
   .inspector { grid-template-columns: 1fr; }
   .credit-packs { grid-template-columns: repeat(2, 1fr); }
+  .features { grid-template-columns: repeat(2, 1fr); }
 }
 
 html {
