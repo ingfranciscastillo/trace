@@ -1,12 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { Nav } from "../components/Nav";
 import { authClient } from "../lib/auth-client";
+import { getSession } from "../lib/auth.functions";
 import { CREDIT_PACKS } from "../lib/creditPacks";
 import { getMyCredits } from "../lib/credits.functions";
 
 export const Route = createFileRoute("/credits")({
+	beforeLoad: async () => {
+		const session = await getSession();
+		if (!session) {
+			throw redirect({ to: "/login" });
+		}
+	},
 	component: CreditsPage,
 });
 
@@ -112,20 +119,14 @@ function CreditsPage() {
 							<div className="credit-pack__rate">
 								{((pack.priceUsd / pack.credits) * 100).toFixed(2)}¢ / credit
 							</div>
-							{data?.signedIn ? (
-								<button
-									type="button"
-									className="btn btn--accent"
-									disabled={buyingSlug === pack.slug}
-									onClick={() => buy(pack.slug)}
-								>
-									{buyingSlug === pack.slug ? "…" : "BUY"}
-								</button>
-							) : (
-								<Link to="/login" className="btn">
-									SIGN IN TO BUY
-								</Link>
-							)}
+							<button
+								type="button"
+								className="btn btn--accent"
+								disabled={!data || buyingSlug === pack.slug}
+								onClick={() => buy(pack.slug)}
+							>
+								{buyingSlug === pack.slug ? "…" : "BUY"}
+							</button>
 						</div>
 					))}
 				</div>
