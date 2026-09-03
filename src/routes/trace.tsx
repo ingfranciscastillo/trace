@@ -41,7 +41,7 @@ function TracePending() {
 		<div className="workspace">
 			<Nav />
 			<div className="loading-state">
-				<span className="loading-dot" />
+				<span className="logo-spinner" />
 				tracing sources…
 			</div>
 		</div>
