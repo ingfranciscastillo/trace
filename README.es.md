@@ -1,12 +1,13 @@
-<p align="center">
+<div align="center">
   <img src="public/logo-square-dark-bg.svg" alt="Trace" width="100">
-</p>
 
 # Trace
 
-<p align="center"><b>Sigue la información hasta donde empezó.</b></p>
+*Sigue la información hasta donde empezó.*
 
 <p align="center"><a href="README.md">English</a> · Español</p>
+
+</div>
 
 ## ¿Qué es Trace?
 
