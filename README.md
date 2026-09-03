@@ -1,8 +1,12 @@
 <p align="center">
-  <img src="public/logo-square-dark-bg.svg" alt="Trace" width="220">
+  <img src="public/logo-square-dark-bg.svg" alt="Trace" width="100">
 </p>
 
+# Trace
+
 <p align="center"><b>Follow information back to where it began.</b></p>
+
+<p align="center">English · <a href="README.es.md">Español</a></p>
 
 ## What is Trace?
 
@@ -14,12 +18,6 @@ enough to tell — the earliest occurrence of each claim.
 Nothing here is invented. Every confidence level, timeline date, and
 "unverified" flag is derived from evidence already on the page or already in
 the corpus — Trace never fabricates certainty it doesn't have.
-
-> [!NOTE]
-> Anything that costs a real request — searching the web for a claim's
-> sources, following a citation chain, falling back to Firecrawl for a
-> blocked fetch — is opt-in and shown as a switch or a button. Trace never
-> spends on your behalf.
 
 ## Features
 
