@@ -130,6 +130,7 @@ function LandingPage() {
 					spellCheck={false}
 				/>
 				<button type="submit" disabled={submitting}>
+					{submitting && <span className="logo-spinner" />}
 					{submitting ? "TRACING…" : "TRACE"}
 				</button>
 			</form>

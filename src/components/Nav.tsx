@@ -46,6 +46,7 @@ export function Nav() {
 				<Link to="/about" onClick={closeMenu}>
 					ABOUT
 				</Link>
+				{isPending && <span className="nav__skeleton" aria-hidden="true" />}
 				{!isPending && session?.user && <CreditsBadge />}
 				{!isPending &&
 					(session?.user ? (

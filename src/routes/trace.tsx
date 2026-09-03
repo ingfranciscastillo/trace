@@ -32,21 +32,8 @@ export const Route = createFileRoute("/trace")({
 	loaderDeps: ({ search }) => ({ url: search.url, firecrawl: search.firecrawl }),
 	loader: ({ context: { queryClient }, deps: { url, firecrawl } }) =>
 		queryClient.query(traceQueryOptions(url, firecrawl)),
-	pendingComponent: TracePending,
 	component: TraceWorkspace,
 });
-
-function TracePending() {
-	return (
-		<div className="workspace">
-			<Nav />
-			<div className="loading-state">
-				<span className="logo-spinner" />
-				tracing sources…
-			</div>
-		</div>
-	);
-}
 
 function TraceWorkspace() {
 	const { url, firecrawl } = Route.useSearch();

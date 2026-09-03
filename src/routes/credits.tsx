@@ -125,7 +125,11 @@ function CreditsPage() {
 								disabled={!data || buyingSlug === pack.slug}
 								onClick={() => buy(pack.slug)}
 							>
-								{buyingSlug === pack.slug ? "…" : "BUY"}
+								{!data || buyingSlug === pack.slug ? (
+									<span className="logo-spinner" />
+								) : (
+									"BUY"
+								)}
 							</button>
 						</div>
 					))}

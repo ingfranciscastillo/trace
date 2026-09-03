@@ -226,7 +226,7 @@ export function Inspector({
 							disabled={findSourcesPending}
 							onClick={() => onFindSources?.(node.claimId!)}
 						>
-							{findSourcesPending ? "SEARCHING…" : "FIND SOURCES (1 API call)"}
+							{findSourcesPending ? "SEARCHING…" : "FIND SOURCES (1 credit)"}
 						</button>
 						{findSourcesResult && !findSourcesResult.ok && (
 							<p className="inspector__excerpt inspector__excerpt--error">
