@@ -102,6 +102,7 @@ const FIND_SOURCES_ERRORS: Record<string, string> = {
 	unauthorized: "Brave Search rejected the API key.",
 	rate_limited: "Brave Search rate limit hit — try again shortly.",
 	request_failed: "Brave Search request failed.",
+	quota_exceeded: "You've used your free source searches for this period.",
 };
 
 type FindSourcesResult =

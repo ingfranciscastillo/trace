@@ -107,6 +107,30 @@ export const searches = pgTable(
 	(t) => [uniqueIndex("searches_user_article_idx").on(t.userId, t.articleId)],
 );
 
+// Fixed-window usage counters for anything that costs real money per call
+// (Brave Search, Firecrawl). subject is "user:<id>" once signed in, or
+// "ip:<address>" for anonymous callers — anonymous never gets a Firecrawl
+// counter since that path requires a session outright. periodStart is the
+// truncated start of the counting window (UTC day for anonymous, UTC month
+// for signed-in), so a fresh row per window is just a new periodStart value.
+export const usageCounters = pgTable(
+	"usage_counters",
+	{
+		id: serial().primaryKey(),
+		subject: text().notNull(),
+		resource: text().notNull(),
+		periodStart: timestamp("period_start").notNull(),
+		count: integer().notNull().default(0),
+	},
+	(t) => [
+		uniqueIndex("usage_counters_subject_resource_period_idx").on(
+			t.subject,
+			t.resource,
+			t.periodStart,
+		),
+	],
+);
+
 // A candidate external source found via web search for a specific claim.
 // articleId stays null until resolveClaimSource actually extracts and saves it
 // into the corpus (or links it to an existing article at the same URL).

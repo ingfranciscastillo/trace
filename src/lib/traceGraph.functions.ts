@@ -9,6 +9,7 @@ import { saveArticle } from "./articleStore";
 import { extractArticleImpl, extractUrlSchema } from "./extractArticle.functions";
 import { isFirecrawlConfigured } from "./firecrawl";
 import { buildTraceGraph, type TraceGraph } from "./traceGraph";
+import { canUseFirecrawl } from "./usageLimits";
 
 // Anonymous visitors can trace freely, but nothing is recorded for them —
 // History is opt-in by virtue of being signed in, both to view and to save.
@@ -66,12 +67,11 @@ async function getTraceImpl(
 	if (existing) {
 		articleId = existing.id;
 	} else {
-		// Only actually attempted server-side if a session (API key) is
-		// configured — a toggle flipped on by an anonymous visitor can't force
-		// a real Firecrawl call to happen without one.
+		// Re-verified server-side (session + monthly quota) — the UI toggle is
+		// not the actual gate, since this handler is reachable directly.
 		const extracted = await extractArticleImpl(
 			url,
-			useFirecrawl && isFirecrawlConfigured(),
+			useFirecrawl && (await canUseFirecrawl(headers)),
 		);
 		if (!extracted.ok) return { ok: false, url, error: extracted.error };
 		const saved = await saveArticle(extracted);
