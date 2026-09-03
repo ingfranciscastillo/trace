@@ -1,62 +1,51 @@
-# Trace
+<p align="center">
+  <img src="public/logo.svg" alt="Trace" width="220">
+</p>
 
-Provenance-investigation tool built with **TanStack Start**, **TanStack Router** and **TanStack Query**.
+<p align="center"><b>Follow information back to where it began.</b></p>
 
-## Stack
+## What is Trace?
 
-- `@tanstack/react-start` — SSR framework / file-based routing
-- `@tanstack/react-router` — routing, search-param validation (`zod`), loaders
-- `@tanstack/react-query` — data fetching (`ensureQueryData` in the route loader + `useSuspenseQuery` in the component)
-- Plain CSS design system (no UI kit) — tokens in `src/styles/app.css`
-- Fonts: General Sans (display), DM Sans (body/UI), DM Mono (data/metadata)
+Trace is a provenance-tracing tool. Paste a URL and it reconstructs where an
+article's claims actually come from: what it cites, what cites it back,
+what's a near-verbatim copy elsewhere, and — when the corpus already has
+enough to tell — the earliest occurrence of each claim.
 
-## Run it
+Nothing here is invented. Every confidence level, timeline date, and
+"unverified" flag is derived from evidence already on the page or already in
+the corpus — Trace never fabricates certainty it doesn't have.
 
-```bash
-npm install
-npm run dev      # http://localhost:3000
-npm run build && npm run start   # production build
-npm run typecheck
-```
+> [!NOTE]
+> Anything that costs a real request — searching the web for a claim's
+> sources, following a citation chain, falling back to Firecrawl for a
+> blocked fetch — is opt-in and shown as a switch or a button. Trace never
+> spends on your behalf.
 
-## Structure
+## Features
 
-```
-src/
-  router.tsx            router + QueryClient wiring
-  routes/
-    __root.tsx           html shell, fonts, QueryClientProvider
-    index.tsx             landing page (hero + animated demo graph)
-    trace.tsx              /trace?url=... — search validation, query loader, workspace
-  components/
-    Nav.tsx
-    Inspector.tsx          "SELECTED ENTITY" bottom panel
-    graph/GraphCanvas.tsx   pan / zoom / select SVG+HTML graph renderer
-  lib/traceData.ts         types + mock provenance graph + query options
-  styles/app.css           design tokens + all component styles
-```
-
-## What's mocked vs. real
-
-There is no crawler behind this prototype. `src/lib/traceData.ts` always returns the
-same demonstration graph (seeded with whatever domain you type), through a `queryFn`
-with an artificial delay — this is where a real extraction/citation-graph service
-would plug in, without touching the routing, query-caching or UI layers above it.
-
-`src/lib/extractArticle.functions.ts` is the first real piece: given a URL it
-fetches the page and runs Readability/jsdom extraction (title, author, date,
-excerpt, outbound links). It's not wired into `/trace` yet — `traceData.ts`
-still drives the UI — verify it standalone with
-`pnpm extract:test <url>`.
-
-## Notes on the graph
-
-- Nodes are plain positioned buttons; edges are orthogonal SVG paths recomputed from
-  each node's measured `offsetLeft/Top/Width/Height`, so text wrapping never breaks a
-  connector.
-- Pan (drag) and zoom (wheel) apply a single CSS transform to the shared viewport —
-  cheap, and keeps edges perfectly attached at any zoom level.
-- Selecting a node dims everything else and highlights only its direct connections —
-  no node/edge color-codes "good" vs "bad" sources; status is communicated through
-  typography and line style (dashed = unverified), keeping the accent color reserved
-  for selection, active connections and "first seen" evidence, as specified.
+- **Article extraction** — title, author, date, full text, and outbound
+  links pulled from any URL via Readability, with SSRF protections against
+  internal and private targets.
+- **Claim detection** — statistics, attributions, and cited facts are pulled
+  out sentence by sentence and tied to their paragraph.
+- **Citation & copy graph** — resolves `cites` and `copied_from`
+  relationships across every article in the corpus, including which side is
+  chronologically earlier when dates allow it.
+- **First-seen tracking** — finds the earliest dated occurrence of a claim
+  across the corpus, explicit about the difference between "earliest found"
+  and "confirmed origin."
+- **Confidence, never invented** — every claim and relationship gets an
+  evidence-based level (high / medium / low / unverified) with the reason
+  attached, never a made-up percentage.
+- **Divergence detection** — compares a claim's wording against its resolved
+  source's actual text to flag number mismatches or claims the source
+  doesn't actually support.
+- **On-demand source chasing** — Brave Search-backed source discovery and
+  depth-limited chain following, triggered per claim, one request at a time.
+- **Optional Firecrawl fallback** — for sources a plain fetch can't reach
+  past bot protection, available once signed in.
+- **Interactive provenance graph** — an auto-laid-out, pan-and-zoom graph of
+  the whole trace, with an inspector panel and a timeline of every dated
+  event found.
+- **Per-account history** — signed-in users get a private, real trace
+  history; anonymous visits are never recorded.
