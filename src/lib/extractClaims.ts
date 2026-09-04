@@ -1,4 +1,4 @@
-import { JSDOM } from "jsdom";
+import { parseHTML } from "linkedom";
 import { splitSentences } from "./textUtils";
 
 export type ClaimSignal = "statistic" | "attribution" | "citation_marker";
@@ -38,10 +38,8 @@ export function analyzeContent(
 
 	if (!contentHtml) return { claims, citationHrefs };
 
-	const dom = new JSDOM(contentHtml, { url: baseUrl });
-	const blocks = Array.from(
-		dom.window.document.querySelectorAll("p, li, blockquote"),
-	);
+	const { document } = parseHTML(contentHtml, { location: { href: baseUrl } });
+	const blocks = Array.from(document.querySelectorAll("p, li, blockquote"));
 
 	let claimCounter = 0;
 

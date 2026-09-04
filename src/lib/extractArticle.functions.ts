@@ -1,8 +1,8 @@
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { Readability } from "@mozilla/readability";
 import { createServerFn } from "@tanstack/react-start";
-import { JSDOM } from "jsdom";
-import { isIP } from "node:net";
-import { lookup } from "node:dns/promises";
+import { parseHTML } from "linkedom";
 import { z } from "zod";
 import { analyzeContent, type Claim } from "./extractClaims";
 import { firecrawlFetch, isFirecrawlConfigured } from "./firecrawl";
@@ -119,7 +119,12 @@ async function fetchHtml(
 	useFirecrawl: boolean,
 ): Promise<FetchHtmlOk | FetchHtmlError> {
 	const direct = await fetchHtmlDirect(url);
-	if (direct.ok || direct.error === "blocked" || !useFirecrawl || !isFirecrawlConfigured()) {
+	if (
+		direct.ok ||
+		direct.error === "blocked" ||
+		!useFirecrawl ||
+		!isFirecrawlConfigured()
+	) {
 		return direct;
 	}
 
@@ -193,9 +198,13 @@ async function fetchHtmlDirect(
 	return { ok: false, error: "fetch_failed" };
 }
 
+// linkedom's Document is structurally compatible with what Readability and
+// our own querySelector/getAttribute/textContent usage need, but its types
+// don't fully match lib.dom's Document — cast at this one boundary rather
+// than losing type safety on every caller.
 function buildDocument(html: string, url: string): Document {
-	const dom = new JSDOM(html, { url });
-	return dom.window.document;
+	const { document } = parseHTML(html, { location: { href: url } });
+	return document as unknown as Document;
 }
 
 interface MetaFallback {
@@ -241,11 +250,7 @@ function parseReadableArticle(
 	const reader = new Readability(document);
 	const article = reader.parse();
 
-	if (
-		!article ||
-		!article.textContent ||
-		article.textContent.trim().length === 0
-	) {
+	if (!article?.textContent || article.textContent.trim().length === 0) {
 		return null;
 	}
 
@@ -265,10 +270,8 @@ function extractLinks(
 ): ExtractLink[] {
 	if (!contentHtml) return [];
 
-	const dom = new JSDOM(contentHtml, { url: baseUrl });
-	const anchors = Array.from(
-		dom.window.document.querySelectorAll("a[href]"),
-	);
+	const { document } = parseHTML(contentHtml, { location: { href: baseUrl } });
+	const anchors = Array.from(document.querySelectorAll("a[href]"));
 
 	const seen = new Set<string>();
 	const links: ExtractLink[] = [];
