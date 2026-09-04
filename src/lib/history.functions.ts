@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import { eq, inArray } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { ensureSession } from "@/lib/auth.functions";
 import { db } from "../db";
 import { articles, claimSources, claims, relationships, searches } from "../db/schema";
 
@@ -23,8 +22,12 @@ export type HistoryResult =
 // anonymous request here gets nothing back regardless of what's in the DB.
 export const getHistory = createServerFn({ method: "POST" }).handler(
 	async (): Promise<HistoryResult> => {
-		const session = await auth.api.getSession({ headers: getRequestHeaders() });
-		if (!session) return { signedIn: false };
+		let session: Awaited<ReturnType<typeof ensureSession>>;
+		try {
+			session = await ensureSession();
+		} catch {
+			return { signedIn: false };
+		}
 
 		const mySearches = await db
 			.select({ articleId: searches.articleId })

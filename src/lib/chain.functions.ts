@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { ensureSession } from "@/lib/auth.functions";
 import {
 	DEFAULT_RESULTS_PER_CLAIM,
 	findSourcesForClaim,
@@ -24,10 +24,12 @@ export const findSources = createServerFn({ method: "POST" })
 	.validator((data: unknown) => findSourcesInput.parse(data))
 	.handler(async ({ data }) => {
 		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
+		const hasSession = await ensureSession()
+			.then(() => true)
+			.catch(() => false);
 
 		const requestedMax = data.maxResults ?? DEFAULT_RESULTS_PER_CLAIM;
-		const effectiveMax = requestedMax > DEFAULT_RESULTS_PER_CLAIM && session
+		const effectiveMax = requestedMax > DEFAULT_RESULTS_PER_CLAIM && hasSession
 			? requestedMax
 			: DEFAULT_RESULTS_PER_CLAIM;
 

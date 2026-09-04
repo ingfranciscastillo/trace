@@ -94,18 +94,10 @@ async function getTraceImpl(
 }
 
 export const getTrace = createServerFn({ method: "GET" })
-	.validator((data: unknown) => {
-		console.log("[getTrace] validator input:", data);
-		return getTraceInput.parse(data);
-	})
+	.validator((data: unknown) => getTraceInput.parse(data))
 	.handler(async ({ data }) => {
-		console.log("[getTrace] HANDLER ENTERED:", data);
-
-		return {
-			ok: false as const,
-			url: data.url,
-			error: "fetch_failed" as const,
-		};
+		const headers = getRequestHeaders();
+		return getTraceImpl(data.url, data.useFirecrawl ?? false, headers);
 	});
 
 // Lets the UI decide whether to even offer the Firecrawl toggle's "on" state
