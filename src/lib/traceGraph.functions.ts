@@ -6,7 +6,10 @@ import { auth } from "@/lib/auth";
 import { db } from "../db";
 import { articles, searches } from "../db/schema";
 import { saveArticle } from "./articleStore";
-import { extractArticleImpl, extractUrlSchema } from "./extractArticle.functions";
+import {
+	extractArticleImpl,
+	extractUrlSchema,
+} from "./extractArticle.functions";
 import { isFirecrawlConfigured } from "./firecrawl";
 import { buildTraceGraph, type TraceGraph } from "./traceGraph";
 import { canUseFirecrawl } from "./usageLimits";
@@ -17,7 +20,10 @@ import { canUseFirecrawl } from "./usageLimits";
 // grabbing them this deep in the call chain risks losing the request context
 // that getRequestHeaders() depends on. Best-effort: recording a search should
 // never be able to break viewing the trace itself.
-async function recordSearch(articleId: number, headers: Headers): Promise<void> {
+async function recordSearch(
+	articleId: number,
+	headers: Headers,
+): Promise<void> {
 	try {
 		const session = await auth.api.getSession({ headers });
 		if (!session) return;
@@ -61,7 +67,10 @@ async function getTraceImpl(
 	if (!parsed.success) return { ok: false, url: rawUrl, error: "invalid_url" };
 	const url = parsed.data;
 
-	const [existing] = await db.select().from(articles).where(eq(articles.url, url));
+	const [existing] = await db
+		.select()
+		.from(articles)
+		.where(eq(articles.url, url));
 
 	let articleId: number;
 	if (existing) {
@@ -85,10 +94,18 @@ async function getTraceImpl(
 }
 
 export const getTrace = createServerFn({ method: "GET" })
-	.validator((data: unknown) => getTraceInput.parse(data))
+	.validator((data: unknown) => {
+		console.log("[getTrace] validator input:", data);
+		return getTraceInput.parse(data);
+	})
 	.handler(async ({ data }) => {
-		const headers = getRequestHeaders();
-		return getTraceImpl(data.url, data.useFirecrawl ?? false, headers);
+		console.log("[getTrace] HANDLER ENTERED:", data);
+
+		return {
+			ok: false as const,
+			url: data.url,
+			error: "fetch_failed" as const,
+		};
 	});
 
 // Lets the UI decide whether to even offer the Firecrawl toggle's "on" state
