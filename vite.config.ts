@@ -11,7 +11,16 @@ const config = defineConfig({
 	resolve: { tsconfigPaths: true },
 	plugins: [
 		devtools(),
-		nitro({ rollupConfig: { external: [/^@sentry\//] } }),
+		nitro({
+			rollupConfig: { external: [/^@sentry\//] },
+			// jsdom is CommonJS and reads __dirname at runtime to resolve its own
+			// assets (e.g. its default stylesheet) — bundling it into the ESM
+			// output leaves __dirname undefined and crashes on every trace. Using
+			// nitro's own trace (not rollupConfig.external, which would bypass
+			// nitro's externals plugin and skip copying the real files) keeps it
+			// as untouched CommonJS and ships its files with the function.
+			traceDeps: ["jsdom*"],
+		}),
 		tailwindcss(),
 		tanstackStart(),
 		viteReact(),
