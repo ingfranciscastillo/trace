@@ -160,29 +160,29 @@ function LandingPage() {
 				<div className="feature">
 					<div className="feature__label">CLAIM EXTRACTION</div>
 					<p>
-						Every checkable sentence, pulled out automatically —
-						statistics, attributions, citations.
+						Every checkable sentence, pulled out automatically — statistics,
+						attributions, citations.
 					</p>
 				</div>
 				<div className="feature">
 					<div className="feature__label">SOURCE TRACING</div>
 					<p>
-						Follow a claim to its cited source, then to that source's
-						sources, as far as the chain goes.
+						Follow a claim to its cited source, then to that source's sources,
+						as far as the chain goes.
 					</p>
 				</div>
 				<div className="feature">
 					<div className="feature__label">COPY DETECTION</div>
 					<p>
-						See when text has been republished or copied elsewhere, and
-						how many times.
+						See when text has been republished or copied elsewhere, and how many
+						times.
 					</p>
 				</div>
 				<div className="feature">
 					<div className="feature__label">CONFIDENCE, EXPLAINED</div>
 					<p>
-						Every confidence level comes with the evidence behind it —
-						never a made-up score.
+						Every confidence level comes with the evidence behind it — never a
+						made-up score.
 					</p>
 				</div>
 			</div>
@@ -203,8 +203,7 @@ function LandingPage() {
 			<div className="contact-section">
 				<div className="contact-section__eyebrow">CONTACT</div>
 				<p>
-					Questions, feedback, or something looks wrong — reach out
-					directly at{" "}
+					Questions, feedback, or something looks wrong — reach out directly at{" "}
 					{emailRevealed ? (
 						<a href={`mailto:${emailUser}@${emailDomain}`}>
 							{emailUser}@{emailDomain}
@@ -223,6 +222,7 @@ function LandingPage() {
 					rel="noopener noreferrer"
 					aria-label="GitHub"
 				>
+					<span className="sr-only">GitHub</span>
 					<svg viewBox="0 0 1024 1024" fill="none" aria-hidden="true">
 						<path
 							fillRule="evenodd"

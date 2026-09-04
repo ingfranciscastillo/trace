@@ -15,7 +15,9 @@ export const FREE_BRAVE_SEARCHES_PER_MONTH = 15;
 export const FREE_FIRECRAWL_PER_MONTH = 3;
 
 export function utcDayStart(d = new Date()): Date {
-	return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+	return new Date(
+		Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+	);
 }
 
 export function utcMonthStart(d = new Date()): Date {
@@ -28,7 +30,7 @@ export function utcNextMonthStart(d = new Date()): Date {
 
 export function getClientIp(headers: Headers): string {
 	const forwarded = headers.get("x-forwarded-for");
-	if (forwarded) return forwarded.split(",")[0]!.trim();
+	if (forwarded) return forwarded.split(",")[0]?.trim();
 	return headers.get("x-real-ip") ?? "unknown";
 }
 
@@ -56,7 +58,9 @@ export async function checkAndConsume(
 		const existing = rows[0];
 
 		if (!existing) {
-			await tx.insert(usageCounters).values({ subject, resource, periodStart, count: 1 });
+			await tx
+				.insert(usageCounters)
+				.values({ subject, resource, periodStart, count: 1 });
 			return true;
 		}
 		if (existing.count >= limit) return false;
@@ -73,7 +77,9 @@ export async function checkAndConsume(
 // call this once, right before actually spending the request. Free monthly
 // quota first; once that's used up, spend a purchased credit if the account
 // has one.
-export async function consumeBraveSearchQuota(headers: Headers): Promise<boolean> {
+export async function consumeBraveSearchQuota(
+	headers: Headers,
+): Promise<boolean> {
 	const session = await auth.api.getSession({ headers });
 	if (session) {
 		const freeOk = await checkAndConsume(
@@ -103,12 +109,19 @@ export interface FreeQuotaStatus {
 
 // Read-only view of this month's free-tier usage — never consumes, just
 // reports where the counters currently stand, for display in the UI.
-export async function getFreeQuotaStatus(userId: string): Promise<FreeQuotaStatus> {
+export async function getFreeQuotaStatus(
+	userId: string,
+): Promise<FreeQuotaStatus> {
 	const periodStart = utcMonthStart();
 	const rows = await db
 		.select()
 		.from(usageCounters)
-		.where(and(eq(usageCounters.subject, `user:${userId}`), eq(usageCounters.periodStart, periodStart)));
+		.where(
+			and(
+				eq(usageCounters.subject, `user:${userId}`),
+				eq(usageCounters.periodStart, periodStart),
+			),
+		);
 
 	return {
 		braveUsed: rows.find((r) => r.resource === "brave_search")?.count ?? 0,
